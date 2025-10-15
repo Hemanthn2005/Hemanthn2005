@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Hospital Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #0ea5e9;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-blue: #1e3a8a;
+            --light-bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%);
+            color: var(--text-dark);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--primary-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .stat-card i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--light-bg);
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            outline: none;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--dark-blue) 100%);
+            color: white;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .search-filter {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .header h1 { font-size: 2rem; }
+            .stats-container { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-hospital"></i> MediCare Hospital</h1>
+        <p>Complete Healthcare Management System</p>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <i class="fas fa-user-injured"></i>
+            <span class="stat-number" id="totalPatients">0</span>
+            <span class="stat-label">Total Patients</span>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-user-md"></i>
+            <span class="stat-number" id="totalDoctors">0</span>
+            <span class="stat-label">Doctors</span>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-calendar-check"></i>
+            <span class="stat-number" id="totalAppointments">0</span>
+            <span class="stat-label">Appointments</span>
+        </div>
+        <div class="stat-card">
+            <i class="fas fa-file-invoice"></i>
+            <span class="stat-number" id="totalBills">0</span>
+            <span class="stat-label">Total Bills</span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('patients')">
+            <i class="fas fa-user-injured"></i> Patients
+        </div>
+        <div class="tab" onclick="switchTab('appointments')">
+            <i class="fas fa-calendar-alt"></i> Appointments
+        </div>
+        <div class="tab" onclick="switchTab('treatments')">
+            <i class="fas fa-stethoscope"></i> Treatments
+        </div>
+        <div class="tab" onclick="switchTab('billing')">
+            <i class="fas fa-file-invoice-dollar"></i> Billing
+        </div>
+        <div class="tab" onclick="switchTab('insurance')">
+            <i class="fas fa-shield-alt"></i> Insurance
+        </div>
+    </div>
+
+    <!-- Patients Tab -->
+    <div id="patients-tab" class="tab-content active">
+        <h2><i class="fas fa-user-plus"></i> Add New Patient</h2>
+        <form id="patientForm" class="form-grid">
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Patient Name</label>
+                <input type="text" id="name" placeholder="Enter patient name" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-birthday-cake"></i> Age</label>
+                <input type="number" id="age" placeholder="Age" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-venus-mars"></i> Gender</label>
+                <select id="gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-phone"></i> Contact</label>
+                <input type="text" id="contact" placeholder="Phone number" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-file-medical"></i> Medical History</label>
+                <textarea id="medical_history" placeholder="Medical conditions" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-day"></i> Admission Date</label>
+                <input type="date" id="admission_date" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-shield-alt"></i> Insurance</label>
+                <select id="insurance_id">
+                    <option value="">Select Insurance</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-plus"></i> Add Patient
+                </button>
+            </div>
+        </form>
+
+        <div class="search-filter">
+            <input type="text" id="searchPatient" placeholder="Search patient by name..." style="flex: 1; padding: 12px; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <button onclick="searchPatient()" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+            </button>
+            <button onclick="loadPatients()" class="btn">
+                <i class="fas fa-refresh"></i> Refresh
+            </button>
+        </div>
+
+        <h3><i class="fas fa-list"></i> Patient Records</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Contact</th>
+                        <th>Medical History</th><th>Admission Date</th><th>Insurance</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Appointments Tab -->
+    <div id="appointments-tab" class="tab-content">
+        <h2><i class="fas fa-calendar-plus"></i> Schedule Appointment</h2>
+        <form id="appointmentForm" class="form-grid">
+            <div class="form-group">
+                <label><i class="fas fa-user-injured"></i> Patient</label>
+                <select id="appointmentPatient" required>
+                    <option value="">Select Patient</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-md"></i> Doctor</label>
+                <select id="appointmentDoctor" required>
+                    <option value="">Select Doctor</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-day"></i> Appointment Date</label>
+                <input type="date" id="appointment_date" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-calendar-plus"></i> Schedule Appointment
+                </button>
+            </div>
+        </form>
+
+        <h3><i class="fas fa-calendar-check"></i> All Appointments</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Patient</th><th>Doctor</th><th>Appointment Date</th>
+                    </tr>
+                </thead>
+                <tbody id="appointmentsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Treatments Tab -->
+    <div id="treatments-tab" class="tab-content">
+        <h2><i class="fas fa-stethoscope"></i> Add Treatment</h2>
+        <form id="treatmentForm" class="form-grid">
+            <div class="form-group">
+                <label><i class="fas fa-user-injured"></i> Patient</label>
+                <select id="treatmentPatient" required>
+                    <option value="">Select Patient</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user-md"></i> Doctor</label>
+                <select id="treatmentDoctor" required>
+                    <option value="">Select Doctor</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-day"></i> Treatment Date</label>
+                <input type="date" id="treatment_date" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-file-medical"></i> Description</label>
+                <textarea id="treatment_description" placeholder="Treatment description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-pills"></i> Medicine Prescribed</label>
+                <textarea id="medicine_prescribed" placeholder="Medicines prescribed" rows="2"></textarea>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-plus"></i> Add Treatment
+                </button>
+            </div>
+        </form>
+
+        <h3><i class="fas fa-list-medical"></i> Treatment History</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Patient</th><th>Doctor</th><th>Treatment Date</th>
+                        <th>Description</th><th>Medicine</th>
+                    </tr>
+                </thead>
+                <tbody id="treatmentsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Billing Tab -->
+    <div id="billing-tab" class="tab-content">
+        <h2><i class="fas fa-file-invoice-dollar"></i> Generate Bill</h2>
+        <form id="billForm" class="form-grid">
+            <div class="form-group">
+                <label><i class="fas fa-user-injured"></i> Patient</label>
+                <select id="billPatient" required>
+                    <option value="">Select Patient</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-stethoscope"></i> Treatment</label>
+                <select id="billTreatment" required>
+                    <option value="">Select Treatment</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-dollar-sign"></i> Total Amount</label>
+                <input type="number" id="total_amount" placeholder="Total amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-credit-card"></i> Payment Status</label>
+                <select id="payment_status" required>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Partial">Partial</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-file-invoice"></i> Generate Bill
+                </button>
+            </div>
+        </form>
+
+        <h3><i class="fas fa-receipt"></i> All Bills</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bill ID</th><th>Patient</th><th>Treatment</th><th>Total Amount</th>
+                        <th>Payment Status</th><th>Created Date</th>
+                    </tr>
+                </thead>
+                <tbody id="billsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Insurance Tab -->
+    <div id="insurance-tab" class="tab-content">
+        <h2><i class="fas fa-shield-alt"></i> Add Insurance</h2>
+        <form id="insuranceForm" class="form-grid">
+            <div class="form-group">
+                <label><i class="fas fa-building"></i> Provider Name</label>
+                <input type="text" id="provider_name" placeholder="Insurance provider" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-file-contract"></i> Policy Number</label>
+                <input type="text" id="policy_number" placeholder="Policy number" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-info-circle"></i> Coverage Details</label>
+                <textarea id="coverage_details" placeholder="Coverage details" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-check"></i> Valid Till</label>
+                <input type="date" id="valid_till" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-plus"></i> Add Insurance
+                </button>
+            </div>
+        </form>
+
+        <h3><i class="fas fa-list"></i> Insurance Providers</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Provider</th><th>Policy Number</th><th>Coverage Details</th>
+                        <th>Valid Till</th>
+                    </tr>
+                </thead>
+                <tbody id="insuranceTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tab switching
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(tabName + '-tab').classList.add('active');
+        event.currentTarget.classList.add('active');
+        
+        // Load tab-specific data
+        switch(tabName) {
+            case 'patients':
+                loadPatients();
+                loadInsuranceForPatients();
+                break;
+            case 'appointments':
+                loadAppointments();
+                loadPatientsForAppointments();
+                loadDoctorsForAppointments();
+                break;
+            case 'treatments':
+                loadTreatments();
+                loadPatientsForTreatments();
+                loadDoctorsForTreatments();
+                break;
+            case 'billing':
+                loadBills();
+                loadPatientsForBilling();
+                loadTreatmentsForBilling();
+                break;
+            case 'insurance':
+                loadInsurance();
+                break;
+        }
+    }
+
+    // Load all initial data
+    async function loadInitialData() {
+        await loadDoctors();
+        await loadInsurance();
+        await loadPatients();
+        await loadAppointments();
+        await loadTreatments();
+        await loadBills();
+        updateStats();
+    }
+
+    // Load doctors
+    async function loadDoctors() {
+        try {
+            const res = await fetch('http://localhost:3000/doctors');
+            const doctors = await res.json();
+            
+            // Store doctors globally for other functions
+            window.doctors = doctors;
+            
+        } catch (error) {
+            console.error('Error loading doctors:', error);
+        }
+    }
+
+    // Load patients
+    async function loadPatients() {
+        try {
+            const res = await fetch('http://localhost:3000/patients');
+            const patients = await res.json();
+            renderPatientsTable(patients);
+            updateStats(); // Update stats when patients are loaded
+        } catch (error) {
+            console.error('Error loading patients:', error);
+        }
+    }
+
+    function renderPatientsTable(patients) {
+        const tbody = document.getElementById('patientsTable');
+        tbody.innerHTML = '';
+        
+        patients.forEach(patient => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${patient.patient_id}</td>
+                <td>${patient.name}</td>
+                <td>${patient.age}</td>
+                <td>${patient.gender}</td>
+                <td>${patient.contact}</td>
+                <td>${patient.medical_history || '-'}</td>
+                <td>${patient.admission_date}</td>
+                <td>${patient.provider_name || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Load appointments
+    async function loadAppointments() {
+        try {
+            const res = await fetch('http://localhost:3000/appointments');
+            const appointments = await res.json();
+            renderAppointmentsTable(appointments);
+        } catch (error) {
+            console.error('Error loading appointments:', error);
+        }
+    }
+
+    function renderAppointmentsTable(appointments) {
+        const tbody = document.getElementById('appointmentsTable');
+        tbody.innerHTML = '';
+        
+        appointments.forEach(appointment => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${appointment.appointment_id}</td>
+                <td>${appointment.patient_name}</td>
+                <td>${appointment.doctor_name}</td>
+                <td>${appointment.appointment_date}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Load treatments
+    async function loadTreatments() {
+        try {
+            const res = await fetch('http://localhost:3000/treatments');
+            const treatments = await res.json();
+            renderTreatmentsTable(treatments);
+        } catch (error) {
+            console.error('Error loading treatments:', error);
+        }
+    }
+
+    function renderTreatmentsTable(treatments) {
+        const tbody = document.getElementById('treatmentsTable');
+        tbody.innerHTML = '';
+        
+        treatments.forEach(treatment => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${treatment.treatment_id}</td>
+                <td>${treatment.patient_name}</td>
+                <td>${treatment.doctor_name}</td>
+                <td>${treatment.treatment_date}</td>
+                <td>${treatment.description}</td>
+                <td>${treatment.medicine_prescribed || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Load bills
+    async function loadBills() {
+        try {
+            const res = await fetch('http://localhost:3000/bills');
+            const bills = await res.json();
+            renderBillsTable(bills);
+        } catch (error) {
+            console.error('Error loading bills:', error);
+        }
+    }
+
+    function renderBillsTable(bills) {
+        const tbody = document.getElementById('billsTable');
+        tbody.innerHTML = '';
+        
+        bills.forEach(bill => {
+            const statusClass = bill.payment_status === 'Paid' ? 'badge-success' : 
+                              bill.payment_status === 'Partial' ? 'badge-warning' : 'badge-danger';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${bill.bill_id}</td>
+                <td>${bill.patient_name}</td>
+                <td>${bill.treatment_description || 'General'}</td>
+                <td>$${bill.total_amount}</td>
+                <td><span class="badge ${statusClass}">${bill.payment_status}</span></td>
+                <td>${new Date(bill.created_at).toLocaleDateString()}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Load insurance
+    async function loadInsurance() {
+        try {
+            const res = await fetch('http://localhost:3000/insurance');
+            const insurance = await res.json();
+            renderInsuranceTable(insurance);
+        } catch (error) {
+            console.error('Error loading insurance:', error);
+        }
+    }
+
+    function renderInsuranceTable(insurance) {
+        const tbody = document.getElementById('insuranceTable');
+        tbody.innerHTML = '';
+        
+        insurance.forEach(ins => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${ins.insurance_id}</td>
+                <td>${ins.provider_name}</td>
+                <td>${ins.policy_number}</td>
+                <td>${ins.coverage_details}</td>
+                <td>${ins.valid_till}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Update statistics
+    async function updateStats() {
+        try {
+            const [patientsRes, doctorsRes, appointmentsRes, billsRes] = await Promise.all([
+                fetch('http://localhost:3000/patients'),
+                fetch('http://localhost:3000/doctors'),
+                fetch('http://localhost:3000/appointments'),
+                fetch('http://localhost:3000/bills')
+            ]);
+            
+            const patients = await patientsRes.json();
+            const doctors = await doctorsRes.json();
+            const appointments = await appointmentsRes.json();
+            const bills = await billsRes.json();
+            
+            document.getElementById('totalPatients').textContent = patients.length;
+            document.getElementById('totalDoctors').textContent = doctors.length;
+            document.getElementById('totalAppointments').textContent = appointments.length;
+            document.getElementById('totalBills').textContent = bills.length;
+            
+        } catch (error) {
+            console.error('Error updating stats:', error);
+        }
+    }
+
+    // Form submissions
+    document.getElementById('patientForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        
+        const body = {
+            name: document.getElementById('name').value,
+            age: parseInt(document.getElementById('age').value),
+            gender: document.getElementById('gender').value,
+            contact: document.getElementById('contact').value,
+            medical_history: document.getElementById('medical_history').value,
+            admission_date: document.getElementById('admission_date').value,
+            insurance_id: document.getElementById('insurance_id').value || null
+        };
+        
+        try {
+            const response = await fetch('http://localhost:3000/patients/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) {
+                alert('Patient added successfully!');
+                loadPatients();
+                updateStats(); // Update stats after adding patient
+                e.target.reset();
+            }
+        } catch (error) {
+            console.error('Error adding patient:', error);
+        }
+    });
+
+    document.getElementById('appointmentForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        
+        const body = {
+            patient_id: parseInt(document.getElementById('appointmentPatient').value),
+            doctor_id: parseInt(document.getElementById('appointmentDoctor').value),
+            appointment_date: document.getElementById('appointment_date').value
+        };
+        
+        try {
+            const response = await fetch('http://localhost:3000/appointments/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) {
+                alert('Appointment scheduled successfully!');
+                loadAppointments();
+                updateStats(); // Update stats after adding appointment
+                e.target.reset();
+            }
+        } catch (error) {
+            console.error('Error scheduling appointment:', error);
+        }
+    });
+
+    document.getElementById('treatmentForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        
+        const body = {
+            patient_id: parseInt(document.getElementById('treatmentPatient').value),
+            doctor_id: parseInt(document.getElementById('treatmentDoctor').value),
+            treatment_date: document.getElementById('treatment_date').value,
+            description: document.getElementById('treatment_description').value,
+            medicine_prescribed: document.getElementById('medicine_prescribed').value
+        };
+        
+        try {
+            const response = await fetch('http://localhost:3000/treatments/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) {
+                alert('Treatment added successfully!');
+                loadTreatments();
+                e.target.reset();
+            }
+        } catch (error) {
+            console.error('Error adding treatment:', error);
+        }
+    });
+
+    document.getElementById('billForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        
+        const body = {
+            patient_id: parseInt(document.getElementById('billPatient').value),
+            treatment_id: parseInt(document.getElementById('billTreatment').value),
+            total_amount: parseFloat(document.getElementById('total_amount').value),
+            payment_status: document.getElementById('payment_status').value
+        };
+        
+        try {
+            const response = await fetch('http://localhost:3000/bills/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) {
+                alert('Bill generated successfully!');
+                loadBills();
+                updateStats(); // Update stats after adding bill
+                e.target.reset();
+            }
+        } catch (error) {
+            console.error('Error generating bill:', error);
+        }
+    });
+
+    document.getElementById('insuranceForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        
+        const body = {
+            provider_name: document.getElementById('provider_name').value,
+            policy_number: document.getElementById('policy_number').value,
+            coverage_details: document.getElementById('coverage_details').value,
+            valid_till: document.getElementById('valid_till').value
+        };
+        
+        try {
+            const response = await fetch('http://localhost:3000/insurance/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if(response.ok) {
+                alert('Insurance added successfully!');
+                loadInsurance();
+                e.target.reset();
+            }
+        } catch (error) {
+            console.error('Error adding insurance:', error);
+        }
+    });
+
+    // Search patient
+    async function searchPatient() {
+        const name = document.getElementById('searchPatient').value.trim();
+        if(!name) return loadPatients();
+        
+        try {
+            const res = await fetch('http://localhost:3000/patients/search/' + encodeURIComponent(name));
+            const patients = await res.json();
+            renderPatientsTable(patients);
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    }
+
+    // Dropdown loading functions
+    async function loadInsuranceForPatients() {
+        try {
+            const res = await fetch('http://localhost:3000/insurance');
+            const insurance = await res.json();
+            
+            const select = document.getElementById('insurance_id');
+            select.innerHTML = '<option value="">Select Insurance</option>';
+            
+            insurance.forEach(ins => {
+                const option = document.createElement('option');
+                option.value = ins.insurance_id;
+                option.textContent = `${ins.provider_name} - ${ins.policy_number}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading insurance for patients:', error);
+        }
+    }
+
+    async function loadPatientsForAppointments() {
+        try {
+            const res = await fetch('http://localhost:3000/patients');
+            const patients = await res.json();
+            
+            const select = document.getElementById('appointmentPatient');
+            select.innerHTML = '<option value="">Select Patient</option>';
+            
+            patients.forEach(patient => {
+                const option = document.createElement('option');
+                option.value = patient.patient_id;
+                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading patients for appointments:', error);
+        }
+    }
+
+    async function loadDoctorsForAppointments() {
+        const select = document.getElementById('appointmentDoctor');
+        select.innerHTML = '<option value="">Select Doctor</option>';
+        
+        window.doctors.forEach(doctor => {
+            const option = document.createElement('option');
+            option.value = doctor.doctor_id;
+            option.textContent = `${doctor.name} - ${doctor.specialization}`;
+            select.appendChild(option);
+        });
+    }
+
+    // Similar functions for other dropdowns...
+    async function loadPatientsForTreatments() {
+        try {
+            const res = await fetch('http://localhost:3000/patients');
+            const patients = await res.json();
+            
+            const select = document.getElementById('treatmentPatient');
+            select.innerHTML = '<option value="">Select Patient</option>';
+            
+            patients.forEach(patient => {
+                const option = document.createElement('option');
+                option.value = patient.patient_id;
+                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading patients for treatments:', error);
+        }
+    }
+
+    async function loadDoctorsForTreatments() {
+        const select = document.getElementById('treatmentDoctor');
+        select.innerHTML = '<option value="">Select Doctor</option>';
+        
+        window.doctors.forEach(doctor => {
+            const option = document.createElement('option');
+            option.value = doctor.doctor_id;
+            option.textContent = `${doctor.name} - ${doctor.specialization}`;
+            select.appendChild(option);
+        });
+    }
+
+    async function loadPatientsForBilling() {
+        try {
+            const res = await fetch('http://localhost:3000/patients');
+            const patients = await res.json();
+            
+            const select = document.getElementById('billPatient');
+            select.innerHTML = '<option value="">Select Patient</option>';
+            
+            patients.forEach(patient => {
+                const option = document.createElement('option');
+                option.value = patient.patient_id;
+                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading patients for billing:', error);
+        }
+    }
+
+    async function loadTreatmentsForBilling() {
+        try {
+            const res = await fetch('http://localhost:3000/treatments');
+            const treatments = await res.json();
+            
+            const select = document.getElementById('billTreatment');
+            select.innerHTML = '<option value="">Select Treatment</option>';
+            
+            treatments.forEach(treatment => {
+                const option = document.createElement('option');
+                option.value = treatment.treatment_id;
+                option.textContent = `Treatment #${treatment.treatment_id} - ${treatment.patient_name}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading treatments for billing:', error);
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInitialData();
+    });
+</script>
+</body>
+</html>
