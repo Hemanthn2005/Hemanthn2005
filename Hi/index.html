@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Hospital Management</title>
+    <title>Hospital Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -101,6 +101,11 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.7);
         }
 
         .tab.active {
@@ -128,6 +133,9 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
+            background: var(--light-bg);
+            padding: 25px;
+            border-radius: 16px;
         }
 
         .form-group {
@@ -221,6 +229,7 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            transition: all 0.3s ease;
         }
 
         .btn-primary {
@@ -233,6 +242,11 @@
             color: white;
         }
 
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
         .search-filter {
             display: flex;
             gap: 15px;
@@ -240,19 +254,57 @@
             flex-wrap: wrap;
         }
 
+        .view-section {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .view-section h3 {
+            margin-bottom: 20px;
+            color: var(--dark-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-card {
+            background: var(--light-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .info-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            margin: 25px 0 15px 0;
+            color: var(--dark-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 20px; }
             .header h1 { font-size: 2rem; }
             .stats-container { grid-template-columns: 1fr; }
             .form-grid { grid-template-columns: 1fr; }
+            .tabs { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1><i class="fas fa-hospital"></i> MediCare Hospital</h1>
-        <p>Complete Healthcare Management System</p>
+        <h1><i class="fas fa-hospital"></i> Advanced Hospital Management</h1>
+        <p>Complete Healthcare Management System with Views & Triggers</p>
     </div>
 
     <div class="stats-container">
@@ -291,8 +343,11 @@
         <div class="tab" onclick="switchTab('billing')">
             <i class="fas fa-file-invoice-dollar"></i> Billing
         </div>
-        <div class="tab" onclick="switchTab('insurance')">
-            <i class="fas fa-shield-alt"></i> Insurance
+        <div class="tab" onclick="switchTab('analytics')">
+            <i class="fas fa-chart-bar"></i> Analytics Views
+        </div>
+        <div class="tab" onclick="switchTab('triggers')">
+            <i class="fas fa-bolt"></i> Triggers Test
         </div>
     </div>
 
@@ -320,6 +375,14 @@
             <div class="form-group">
                 <label><i class="fas fa-phone"></i> Contact</label>
                 <input type="text" id="contact" placeholder="Phone number" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-envelope"></i> Email</label>
+                <input type="email" id="email" placeholder="Email address">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-phone-alt"></i> Emergency Contact</label>
+                <input type="text" id="emergency_contact" placeholder="Emergency contact">
             </div>
             <div class="form-group">
                 <label><i class="fas fa-file-medical"></i> Medical History</label>
@@ -352,13 +415,13 @@
             </button>
         </div>
 
-        <h3><i class="fas fa-list"></i> Patient Records</h3>
+        <h3 class="section-title"><i class="fas fa-list"></i> Patient Records</h3>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Contact</th>
-                        <th>Medical History</th><th>Admission Date</th><th>Insurance</th>
+                        <th>Email</th><th>Admission Date</th><th>Insurance</th><th>Medical History</th>
                     </tr>
                 </thead>
                 <tbody id="patientsTable"></tbody>
@@ -383,8 +446,20 @@
                 </select>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-calendar-day"></i> Appointment Date</label>
-                <input type="date" id="appointment_date" required>
+                <label><i class="fas fa-calendar-day"></i> Appointment Date & Time</label>
+                <input type="datetime-local" id="appointment_date" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-info-circle"></i> Status</label>
+                <select id="appointment_status">
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-sticky-note"></i> Notes</label>
+                <textarea id="appointment_notes" placeholder="Appointment notes" rows="2"></textarea>
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
@@ -393,12 +468,13 @@
             </div>
         </form>
 
-        <h3><i class="fas fa-calendar-check"></i> All Appointments</h3>
+        <h3 class="section-title"><i class="fas fa-calendar-check"></i> All Appointments</h3>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th><th>Patient</th><th>Doctor</th><th>Appointment Date</th>
+                        <th>ID</th><th>Patient</th><th>Doctor</th><th>Specialization</th>
+                        <th>Appointment Date</th><th>Status</th><th>Notes</th>
                     </tr>
                 </thead>
                 <tbody id="appointmentsTable"></tbody>
@@ -427,12 +503,28 @@
                 <input type="date" id="treatment_date" required>
             </div>
             <div class="form-group">
+                <label><i class="fas fa-diagnoses"></i> Diagnosis</label>
+                <textarea id="treatment_diagnosis" placeholder="Medical diagnosis" rows="2" required></textarea>
+            </div>
+            <div class="form-group">
                 <label><i class="fas fa-file-medical"></i> Description</label>
                 <textarea id="treatment_description" placeholder="Treatment description" rows="3" required></textarea>
             </div>
             <div class="form-group">
                 <label><i class="fas fa-pills"></i> Medicine Prescribed</label>
                 <textarea id="medicine_prescribed" placeholder="Medicines prescribed" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-check"></i> Follow-up Date</label>
+                <input type="date" id="follow_up_date">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-info-circle"></i> Status</label>
+                <select id="treatment_status">
+                    <option value="Ongoing">Ongoing</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Discontinued">Discontinued</option>
+                </select>
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
@@ -441,13 +533,13 @@
             </div>
         </form>
 
-        <h3><i class="fas fa-list-medical"></i> Treatment History</h3>
+        <h3 class="section-title"><i class="fas fa-list-medical"></i> Treatment History</h3>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>ID</th><th>Patient</th><th>Doctor</th><th>Treatment Date</th>
-                        <th>Description</th><th>Medicine</th>
+                        <th>Diagnosis</th><th>Description</th><th>Medicine</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="treatmentsTable"></tbody>
@@ -467,8 +559,8 @@
             </div>
             <div class="form-group">
                 <label><i class="fas fa-stethoscope"></i> Treatment</label>
-                <select id="billTreatment" required>
-                    <option value="">Select Treatment</option>
+                <select id="billTreatment">
+                    <option value="">Select Treatment (Optional)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -476,12 +568,12 @@
                 <input type="number" id="total_amount" placeholder="Total amount" step="0.01" required>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-credit-card"></i> Payment Status</label>
-                <select id="payment_status" required>
-                    <option value="Unpaid">Unpaid</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Partial">Partial</option>
-                </select>
+                <label><i class="fas fa-shield-alt"></i> Insurance Covered</label>
+                <input type="number" id="insurance_covered" placeholder="Insurance amount" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar-day"></i> Due Date</label>
+                <input type="date" id="due_date" required>
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
@@ -490,63 +582,172 @@
             </div>
         </form>
 
-        <h3><i class="fas fa-receipt"></i> All Bills</h3>
+        <h3 class="section-title"><i class="fas fa-receipt"></i> All Bills</h3>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>Bill ID</th><th>Patient</th><th>Treatment</th><th>Total Amount</th>
-                        <th>Payment Status</th><th>Created Date</th>
+                        <th>Insurance Covered</th><th>Patient Payable</th><th>Payment Status</th><th>Due Date</th>
                     </tr>
                 </thead>
                 <tbody id="billsTable"></tbody>
             </table>
         </div>
-    </div>
 
-    <!-- Insurance Tab -->
-    <div id="insurance-tab" class="tab-content">
-        <h2><i class="fas fa-shield-alt"></i> Add Insurance</h2>
-        <form id="insuranceForm" class="form-grid">
+        <h3 class="section-title"><i class="fas fa-credit-card"></i> Make Payment</h3>
+        <form id="paymentForm" class="form-grid">
             <div class="form-group">
-                <label><i class="fas fa-building"></i> Provider Name</label>
-                <input type="text" id="provider_name" placeholder="Insurance provider" required>
+                <label><i class="fas fa-file-invoice"></i> Bill</label>
+                <select id="paymentBill" required>
+                    <option value="">Select Bill</option>
+                </select>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-file-contract"></i> Policy Number</label>
-                <input type="text" id="policy_number" placeholder="Policy number" required>
+                <label><i class="fas fa-dollar-sign"></i> Amount Paid</label>
+                <input type="number" id="amount_paid" placeholder="Amount to pay" step="0.01" required>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-info-circle"></i> Coverage Details</label>
-                <textarea id="coverage_details" placeholder="Coverage details" rows="3" required></textarea>
+                <label><i class="fas fa-calendar-day"></i> Payment Date</label>
+                <input type="date" id="payment_date" required>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-calendar-check"></i> Valid Till</label>
-                <input type="date" id="valid_till" required>
+                <label><i class="fas fa-credit-card"></i> Payment Method</label>
+                <select id="payment_method" required>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="Online">Online</option>
+                    <option value="Insurance">Insurance</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-receipt"></i> Transaction ID</label>
+                <input type="text" id="transaction_id" placeholder="Transaction ID (optional)">
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px;">
-                    <i class="fas fa-plus"></i> Add Insurance
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 16px;">
+                    <i class="fas fa-credit-card"></i> Make Payment
                 </button>
             </div>
         </form>
+    </div>
 
-        <h3><i class="fas fa-list"></i> Insurance Providers</h3>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th><th>Provider</th><th>Policy Number</th><th>Coverage Details</th>
-                        <th>Valid Till</th>
-                    </tr>
-                </thead>
-                <tbody id="insuranceTable"></tbody>
-            </table>
+    <!-- Analytics Views Tab -->
+    <div id="analytics-tab" class="tab-content">
+        <div class="info-card">
+            <h4><i class="fas fa-info-circle"></i> Database Views Information</h4>
+            <p>These views provide aggregated data from multiple tables for advanced analytics and reporting.</p>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-chart-line"></i> Patient Treatment Summary View</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th>
+                            <th>Total Appointments</th><th>Total Treatments</th>
+                            <th>Total Billing Amount</th><th>Last Bill Date</th><th>Admission Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientSummaryTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-user-md"></i> Doctor Performance View</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Doctor ID</th><th>Name</th><th>Specialization</th><th>Department</th>
+                            <th>Total Appointments</th><th>Total Treatments</th>
+                            <th>Avg Billing Amount</th><th>Total Patients</th>
+                        </tr>
+                    </thead>
+                    <tbody id="doctorPerformanceTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-file-invoice-dollar"></i> Billing Summary View</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bill ID</th><th>Patient</th><th>Doctor</th><th>Treatment</th>
+                            <th>Total Amount</th><th>Insurance Covered</th><th>Patient Payable</th>
+                            <th>Amount Paid</th><th>Remaining</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billingSummaryTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Triggers Test Tab -->
+    <div id="triggers-tab" class="tab-content">
+        <div class="info-card">
+            <h4><i class="fas fa-bolt"></i> Database Triggers Information</h4>
+            <p>Triggers automatically execute when specific events occur in the database. Current triggers:</p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>calculate_patient_payable</strong>: Auto-calculates patient payable amount and updates payment status</li>
+                <li><strong>update_bill_status</strong>: Updates bill status when payments are made</li>
+                <li><strong>update_bill_status_on_update</strong>: Updates status when payments are modified</li>
+                <li><strong>prevent_overpayment</strong>: Prevents payments exceeding remaining balance</li>
+            </ul>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-vial"></i> Test Triggers</h3>
+            <div style="text-align: center; padding: 40px;">
+                <button onclick="testTriggers()" class="btn btn-primary" style="padding: 15px 30px; font-size: 16px;">
+                    <i class="fas fa-play"></i> Run Trigger Test
+                </button>
+                <div id="triggerTestResult" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-list"></i> Active Triggers</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Trigger Name</th><th>Timing</th><th>Event</th><th>Table</th>
+                        </tr>
+                    </thead>
+                    <tbody id="triggersList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="view-section">
+            <h3><i class="fas fa-database"></i> Database Views</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>View Name</th><th>Definition</th>
+                        </tr>
+                    </thead>
+                    <tbody id="viewsList"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    // Global variables
+    let doctors = [];
+    let patients = [];
+    let treatments = [];
+    let bills = [];
+
     // Tab switching
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -574,9 +775,17 @@
                 loadBills();
                 loadPatientsForBilling();
                 loadTreatmentsForBilling();
+                loadBillsForPayments();
                 break;
-            case 'insurance':
-                loadInsurance();
+            case 'analytics':
+                loadPatientSummary();
+                loadDoctorPerformance();
+                loadBillingSummary();
+                loadViewsInfo();
+                break;
+            case 'triggers':
+                loadTriggersInfo();
+                loadViewsInfo();
                 break;
         }
     }
@@ -596,11 +805,7 @@
     async function loadDoctors() {
         try {
             const res = await fetch('http://localhost:3000/doctors');
-            const doctors = await res.json();
-            
-            // Store doctors globally for other functions
-            window.doctors = doctors;
-            
+            doctors = await res.json();
         } catch (error) {
             console.error('Error loading doctors:', error);
         }
@@ -610,9 +815,9 @@
     async function loadPatients() {
         try {
             const res = await fetch('http://localhost:3000/patients');
-            const patients = await res.json();
+            patients = await res.json();
             renderPatientsTable(patients);
-            updateStats(); // Update stats when patients are loaded
+            updateStats();
         } catch (error) {
             console.error('Error loading patients:', error);
         }
@@ -626,13 +831,14 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${patient.patient_id}</td>
-                <td>${patient.name}</td>
+                <td>${patient.patient_name}</td>
                 <td>${patient.age}</td>
                 <td>${patient.gender}</td>
                 <td>${patient.contact}</td>
-                <td>${patient.medical_history || '-'}</td>
+                <td>${patient.email || '-'}</td>
                 <td>${patient.admission_date}</td>
-                <td>${patient.provider_name || '-'}</td>
+                <td>${patient.insurance_company || '-'}</td>
+                <td>${patient.medical_history || '-'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -654,12 +860,18 @@
         tbody.innerHTML = '';
         
         appointments.forEach(appointment => {
+            const statusClass = appointment.status === 'Completed' ? 'badge-success' : 
+                              appointment.status === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${appointment.appointment_id}</td>
                 <td>${appointment.patient_name}</td>
                 <td>${appointment.doctor_name}</td>
-                <td>${appointment.appointment_date}</td>
+                <td>${appointment.specialization_name}</td>
+                <td>${new Date(appointment.appointment_date).toLocaleString()}</td>
+                <td><span class="badge ${statusClass}">${appointment.status}</span></td>
+                <td>${appointment.notes || '-'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -669,7 +881,7 @@
     async function loadTreatments() {
         try {
             const res = await fetch('http://localhost:3000/treatments');
-            const treatments = await res.json();
+            treatments = await res.json();
             renderTreatmentsTable(treatments);
         } catch (error) {
             console.error('Error loading treatments:', error);
@@ -681,14 +893,19 @@
         tbody.innerHTML = '';
         
         treatments.forEach(treatment => {
+            const statusClass = treatment.status === 'Completed' ? 'badge-success' : 
+                              treatment.status === 'Discontinued' ? 'badge-danger' : 'badge-warning';
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${treatment.treatment_id}</td>
                 <td>${treatment.patient_name}</td>
                 <td>${treatment.doctor_name}</td>
                 <td>${treatment.treatment_date}</td>
+                <td>${treatment.diagnosis || '-'}</td>
                 <td>${treatment.description}</td>
                 <td>${treatment.medicine_prescribed || '-'}</td>
+                <td><span class="badge ${statusClass}">${treatment.status}</span></td>
             `;
             tbody.appendChild(tr);
         });
@@ -698,7 +915,7 @@
     async function loadBills() {
         try {
             const res = await fetch('http://localhost:3000/bills');
-            const bills = await res.json();
+            bills = await res.json();
             renderBillsTable(bills);
         } catch (error) {
             console.error('Error loading bills:', error);
@@ -718,9 +935,11 @@
                 <td>${bill.bill_id}</td>
                 <td>${bill.patient_name}</td>
                 <td>${bill.treatment_description || 'General'}</td>
-                <td>$${bill.total_amount}</td>
+                <td>$${parseFloat(bill.total_amount).toFixed(2)}</td>
+                <td>$${parseFloat(bill.insurance_covered).toFixed(2)}</td>
+                <td>$${parseFloat(bill.patient_payable).toFixed(2)}</td>
                 <td><span class="badge ${statusClass}">${bill.payment_status}</span></td>
-                <td>${new Date(bill.created_at).toLocaleDateString()}</td>
+                <td>${bill.due_date}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -731,24 +950,157 @@
         try {
             const res = await fetch('http://localhost:3000/insurance');
             const insurance = await res.json();
-            renderInsuranceTable(insurance);
+            // Store insurance data if needed
         } catch (error) {
             console.error('Error loading insurance:', error);
         }
     }
 
-    function renderInsuranceTable(insurance) {
-        const tbody = document.getElementById('insuranceTable');
+    // Load analytics views data
+    async function loadPatientSummary() {
+        try {
+            const res = await fetch('http://localhost:3000/patient-treatment-summary');
+            const summary = await res.json();
+            renderPatientSummaryTable(summary);
+        } catch (error) {
+            console.error('Error loading patient summary:', error);
+        }
+    }
+
+    function renderPatientSummaryTable(summary) {
+        const tbody = document.getElementById('patientSummaryTable');
         tbody.innerHTML = '';
         
-        insurance.forEach(ins => {
+        summary.forEach(patient => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${ins.insurance_id}</td>
-                <td>${ins.provider_name}</td>
-                <td>${ins.policy_number}</td>
-                <td>${ins.coverage_details}</td>
-                <td>${ins.valid_till}</td>
+                <td>${patient.patient_id}</td>
+                <td>${patient.patient_name}</td>
+                <td>${patient.age}</td>
+                <td>${patient.gender}</td>
+                <td>${patient.total_appointments}</td>
+                <td>${patient.total_treatments}</td>
+                <td>$${parseFloat(patient.total_billing_amount).toFixed(2)}</td>
+                <td>${patient.last_bill_date ? new Date(patient.last_bill_date).toLocaleDateString() : '-'}</td>
+                <td>${patient.admission_date}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadDoctorPerformance() {
+        try {
+            const res = await fetch('http://localhost:3000/doctor-performance');
+            const performance = await res.json();
+            renderDoctorPerformanceTable(performance);
+        } catch (error) {
+            console.error('Error loading doctor performance:', error);
+        }
+    }
+
+    function renderDoctorPerformanceTable(performance) {
+        const tbody = document.getElementById('doctorPerformanceTable');
+        tbody.innerHTML = '';
+        
+        performance.forEach(doctor => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${doctor.doctor_id}</td>
+                <td>${doctor.doctor_name}</td>
+                <td>${doctor.specialization_name}</td>
+                <td>${doctor.department_name}</td>
+                <td>${doctor.total_appointments}</td>
+                <td>${doctor.total_treatments}</td>
+                <td>$${doctor.avg_billing_amount ? parseFloat(doctor.avg_billing_amount).toFixed(2) : '0.00'}</td>
+                <td>${doctor.total_patients}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadBillingSummary() {
+        try {
+            const res = await fetch('http://localhost:3000/billing-summary');
+            const summary = await res.json();
+            renderBillingSummaryTable(summary);
+        } catch (error) {
+            console.error('Error loading billing summary:', error);
+        }
+    }
+
+    function renderBillingSummaryTable(summary) {
+        const tbody = document.getElementById('billingSummaryTable');
+        tbody.innerHTML = '';
+        
+        summary.forEach(bill => {
+            const statusClass = bill.payment_status === 'Paid' ? 'badge-success' : 
+                              bill.payment_status === 'Partial' ? 'badge-warning' : 'badge-danger';
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${bill.bill_id}</td>
+                <td>${bill.patient_name}</td>
+                <td>${bill.doctor_name || '-'}</td>
+                <td>${bill.treatment_description || 'General'}</td>
+                <td>$${parseFloat(bill.total_amount).toFixed(2)}</td>
+                <td>$${parseFloat(bill.insurance_covered).toFixed(2)}</td>
+                <td>$${parseFloat(bill.patient_payable).toFixed(2)}</td>
+                <td>$${parseFloat(bill.amount_paid).toFixed(2)}</td>
+                <td>$${parseFloat(bill.remaining_amount).toFixed(2)}</td>
+                <td><span class="badge ${statusClass}">${bill.payment_status}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Load triggers and views information
+    async function loadTriggersInfo() {
+        try {
+            const res = await fetch('http://localhost:3000/triggers-info');
+            const triggers = await res.json();
+            renderTriggersList(triggers);
+        } catch (error) {
+            console.error('Error loading triggers info:', error);
+        }
+    }
+
+    function renderTriggersList(triggers) {
+        const tbody = document.getElementById('triggersList');
+        tbody.innerHTML = '';
+        
+        triggers.forEach(trigger => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${trigger.TRIGGER_NAME}</td>
+                <td>${trigger.ACTION_TIMING}</td>
+                <td>${trigger.EVENT_MANIPULATION}</td>
+                <td>${trigger.EVENT_OBJECT_TABLE}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadViewsInfo() {
+        try {
+            const res = await fetch('http://localhost:3000/views-info');
+            const views = await res.json();
+            renderViewsList(views);
+        } catch (error) {
+            console.error('Error loading views info:', error);
+        }
+    }
+
+    function renderViewsList(views) {
+        const tbody = document.getElementById('viewsList');
+        tbody.innerHTML = '';
+        
+        views.forEach(view => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${view.view_name}</td>
+                <td style="max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${view.VIEW_DEFINITION}
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -757,21 +1109,13 @@
     // Update statistics
     async function updateStats() {
         try {
-            const [patientsRes, doctorsRes, appointmentsRes, billsRes] = await Promise.all([
-                fetch('http://localhost:3000/patients'),
-                fetch('http://localhost:3000/doctors'),
-                fetch('http://localhost:3000/appointments'),
-                fetch('http://localhost:3000/bills')
-            ]);
-            
-            const patients = await patientsRes.json();
-            const doctors = await doctorsRes.json();
-            const appointments = await appointmentsRes.json();
-            const bills = await billsRes.json();
-            
             document.getElementById('totalPatients').textContent = patients.length;
             document.getElementById('totalDoctors').textContent = doctors.length;
+            
+            const appointmentsRes = await fetch('http://localhost:3000/appointments');
+            const appointments = await appointmentsRes.json();
             document.getElementById('totalAppointments').textContent = appointments.length;
+            
             document.getElementById('totalBills').textContent = bills.length;
             
         } catch (error) {
@@ -788,6 +1132,8 @@
             age: parseInt(document.getElementById('age').value),
             gender: document.getElementById('gender').value,
             contact: document.getElementById('contact').value,
+            email: document.getElementById('email').value,
+            emergency_contact: document.getElementById('emergency_contact').value,
             medical_history: document.getElementById('medical_history').value,
             admission_date: document.getElementById('admission_date').value,
             insurance_id: document.getElementById('insurance_id').value || null
@@ -803,11 +1149,12 @@
             if(response.ok) {
                 alert('Patient added successfully!');
                 loadPatients();
-                updateStats(); // Update stats after adding patient
+                updateStats();
                 e.target.reset();
             }
         } catch (error) {
             console.error('Error adding patient:', error);
+            alert('Error adding patient: ' + error.message);
         }
     });
 
@@ -817,7 +1164,9 @@
         const body = {
             patient_id: parseInt(document.getElementById('appointmentPatient').value),
             doctor_id: parseInt(document.getElementById('appointmentDoctor').value),
-            appointment_date: document.getElementById('appointment_date').value
+            appointment_date: document.getElementById('appointment_date').value,
+            status: document.getElementById('appointment_status').value,
+            notes: document.getElementById('appointment_notes').value
         };
         
         try {
@@ -830,11 +1179,12 @@
             if(response.ok) {
                 alert('Appointment scheduled successfully!');
                 loadAppointments();
-                updateStats(); // Update stats after adding appointment
+                updateStats();
                 e.target.reset();
             }
         } catch (error) {
             console.error('Error scheduling appointment:', error);
+            alert('Error scheduling appointment: ' + error.message);
         }
     });
 
@@ -845,8 +1195,11 @@
             patient_id: parseInt(document.getElementById('treatmentPatient').value),
             doctor_id: parseInt(document.getElementById('treatmentDoctor').value),
             treatment_date: document.getElementById('treatment_date').value,
+            diagnosis: document.getElementById('treatment_diagnosis').value,
             description: document.getElementById('treatment_description').value,
-            medicine_prescribed: document.getElementById('medicine_prescribed').value
+            medicine_prescribed: document.getElementById('medicine_prescribed').value,
+            follow_up_date: document.getElementById('follow_up_date').value || null,
+            status: document.getElementById('treatment_status').value
         };
         
         try {
@@ -863,6 +1216,7 @@
             }
         } catch (error) {
             console.error('Error adding treatment:', error);
+            alert('Error adding treatment: ' + error.message);
         }
     });
 
@@ -871,9 +1225,10 @@
         
         const body = {
             patient_id: parseInt(document.getElementById('billPatient').value),
-            treatment_id: parseInt(document.getElementById('billTreatment').value),
+            treatment_id: document.getElementById('billTreatment').value ? parseInt(document.getElementById('billTreatment').value) : null,
             total_amount: parseFloat(document.getElementById('total_amount').value),
-            payment_status: document.getElementById('payment_status').value
+            insurance_covered: parseFloat(document.getElementById('insurance_covered').value) || 0,
+            due_date: document.getElementById('due_date').value
         };
         
         try {
@@ -886,38 +1241,41 @@
             if(response.ok) {
                 alert('Bill generated successfully!');
                 loadBills();
-                updateStats(); // Update stats after adding bill
+                updateStats();
                 e.target.reset();
             }
         } catch (error) {
             console.error('Error generating bill:', error);
+            alert('Error generating bill: ' + error.message);
         }
     });
 
-    document.getElementById('insuranceForm').addEventListener('submit', async e => {
+    document.getElementById('paymentForm').addEventListener('submit', async e => {
         e.preventDefault();
         
         const body = {
-            provider_name: document.getElementById('provider_name').value,
-            policy_number: document.getElementById('policy_number').value,
-            coverage_details: document.getElementById('coverage_details').value,
-            valid_till: document.getElementById('valid_till').value
+            bill_id: parseInt(document.getElementById('paymentBill').value),
+            amount_paid: parseFloat(document.getElementById('amount_paid').value),
+            payment_date: document.getElementById('payment_date').value,
+            payment_method: document.getElementById('payment_method').value,
+            transaction_id: document.getElementById('transaction_id').value || null
         };
         
         try {
-            const response = await fetch('http://localhost:3000/insurance/add', {
+            const response = await fetch('http://localhost:3000/payments/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
             if(response.ok) {
-                alert('Insurance added successfully!');
-                loadInsurance();
+                alert('Payment recorded successfully!');
+                loadBills();
                 e.target.reset();
             }
         } catch (error) {
-            console.error('Error adding insurance:', error);
+            console.error('Error recording payment:', error);
+            alert('Error recording payment: ' + error.message);
         }
     });
 
@@ -927,9 +1285,11 @@
         if(!name) return loadPatients();
         
         try {
-            const res = await fetch('http://localhost:3000/patients/search/' + encodeURIComponent(name));
-            const patients = await res.json();
-            renderPatientsTable(patients);
+            // Since we don't have a dedicated search endpoint, we'll filter client-side
+            const filteredPatients = patients.filter(patient => 
+                patient.patient_name.toLowerCase().includes(name.toLowerCase())
+            );
+            renderPatientsTable(filteredPatients);
         } catch (error) {
             console.error('Search error:', error);
         }
@@ -947,7 +1307,7 @@
             insurance.forEach(ins => {
                 const option = document.createElement('option');
                 option.value = ins.insurance_id;
-                option.textContent = `${ins.provider_name} - ${ins.policy_number}`;
+                option.textContent = `${ins.company_name} - ${ins.policy_number}`;
                 select.appendChild(option);
             });
         } catch (error) {
@@ -966,7 +1326,7 @@
             patients.forEach(patient => {
                 const option = document.createElement('option');
                 option.value = patient.patient_id;
-                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                option.textContent = `${patient.patient_name} (ID: ${patient.patient_id})`;
                 select.appendChild(option);
             });
         } catch (error) {
@@ -978,15 +1338,14 @@
         const select = document.getElementById('appointmentDoctor');
         select.innerHTML = '<option value="">Select Doctor</option>';
         
-        window.doctors.forEach(doctor => {
+        doctors.forEach(doctor => {
             const option = document.createElement('option');
             option.value = doctor.doctor_id;
-            option.textContent = `${doctor.name} - ${doctor.specialization}`;
+            option.textContent = `${doctor.name} - ${doctor.specialization_name}`;
             select.appendChild(option);
         });
     }
 
-    // Similar functions for other dropdowns...
     async function loadPatientsForTreatments() {
         try {
             const res = await fetch('http://localhost:3000/patients');
@@ -998,7 +1357,7 @@
             patients.forEach(patient => {
                 const option = document.createElement('option');
                 option.value = patient.patient_id;
-                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                option.textContent = `${patient.patient_name} (ID: ${patient.patient_id})`;
                 select.appendChild(option);
             });
         } catch (error) {
@@ -1010,10 +1369,10 @@
         const select = document.getElementById('treatmentDoctor');
         select.innerHTML = '<option value="">Select Doctor</option>';
         
-        window.doctors.forEach(doctor => {
+        doctors.forEach(doctor => {
             const option = document.createElement('option');
             option.value = doctor.doctor_id;
-            option.textContent = `${doctor.name} - ${doctor.specialization}`;
+            option.textContent = `${doctor.name} - ${doctor.specialization_name}`;
             select.appendChild(option);
         });
     }
@@ -1029,7 +1388,7 @@
             patients.forEach(patient => {
                 const option = document.createElement('option');
                 option.value = patient.patient_id;
-                option.textContent = `${patient.name} (ID: ${patient.patient_id})`;
+                option.textContent = `${patient.patient_name} (ID: ${patient.patient_id})`;
                 select.appendChild(option);
             });
         } catch (error) {
@@ -1043,7 +1402,7 @@
             const treatments = await res.json();
             
             const select = document.getElementById('billTreatment');
-            select.innerHTML = '<option value="">Select Treatment</option>';
+            select.innerHTML = '<option value="">Select Treatment (Optional)</option>';
             
             treatments.forEach(treatment => {
                 const option = document.createElement('option');
@@ -1056,9 +1415,68 @@
         }
     }
 
+    async function loadBillsForPayments() {
+        try {
+            const res = await fetch('http://localhost:3000/bills');
+            const bills = await res.json();
+            
+            const select = document.getElementById('paymentBill');
+            select.innerHTML = '<option value="">Select Bill</option>';
+            
+            bills.forEach(bill => {
+                const option = document.createElement('option');
+                option.value = bill.bill_id;
+                option.textContent = `Bill #${bill.bill_id} - ${bill.patient_name} - $${parseFloat(bill.patient_payable).toFixed(2)}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading bills for payments:', error);
+        }
+    }
+
+    // Test triggers functionality
+    async function testTriggers() {
+        try {
+            const res = await fetch('http://localhost:3000/test-triggers');
+            const result = await res.json();
+            
+            const resultDiv = document.getElementById('triggerTestResult');
+            if (result.trigger_worked) {
+                resultDiv.innerHTML = `
+                    <div style="background: #dcfce7; color: #166534; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
+                        <h4><i class="fas fa-check-circle"></i> Trigger Test Successful!</h4>
+                        <p><strong>Bill Created:</strong> ID ${result.bill.bill_id}</p>
+                        <p><strong>Total Amount:</strong> $${result.bill.total_amount}</p>
+                        <p><strong>Insurance Covered:</strong> $${result.bill.insurance_covered}</p>
+                        <p><strong>Patient Payable (Auto-calculated):</strong> $${result.bill.patient_payable}</p>
+                        <p><strong>Payment Status (Auto-updated):</strong> <span class="badge badge-warning">${result.bill.payment_status}</span></p>
+                        <p><em>${result.explanation}</em></p>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
+                        <h4><i class="fas fa-exclamation-circle"></i> Trigger Test Failed</h4>
+                        <p>${result.error || 'Please check the server console for details.'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error testing triggers:', error);
+            document.getElementById('triggerTestResult').innerHTML = `
+                <div style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px;">
+                    <h4><i class="fas fa-exclamation-circle"></i> Error Testing Triggers</h4>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        }
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         loadInitialData();
+        console.log('Hospital Management System Loaded');
+        console.log('All tabs should now be functional');
     });
 </script>
 </body>
