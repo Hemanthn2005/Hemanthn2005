@@ -1,0 +1,213 @@
+-- Create Database
+CREATE DATABASE IF NOT EXISTS film_festival_db;
+USE film_festival_db;
+
+-- 1. Festival Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Festival (
+    Festival_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Festival_Name VARCHAR(100) NOT NULL UNIQUE,
+    Location VARCHAR(100),
+    Start_Date DATE,
+    End_Date DATE,
+    Festival_Type ENUM('International', 'National', 'Regional') DEFAULT 'International',
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_festival_name (Festival_Name),
+    INDEX idx_festival_dates (Start_Date, End_Date),
+    INDEX idx_festival_location (Location)
+);
+
+-- 2. Director Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Director (
+    Director_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Director_Name VARCHAR(100) NOT NULL,
+    Nationality VARCHAR(50),
+    Birth_Year INT,
+    Active_Status ENUM('Active', 'Retired', 'Deceased') DEFAULT 'Active',
+    Awards_Won INT DEFAULT 0,
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    CHECK (Birth_Year BETWEEN 1800 AND YEAR(CURDATE())),
+    INDEX idx_director_name (Director_Name),
+    INDEX idx_director_nationality (Nationality)
+);
+
+-- 3. Venue Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Venue (
+    Venue_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Venue_Name VARCHAR(100) NOT NULL,
+    City VARCHAR(50),
+    Capacity INT,
+    Status ENUM('Operational', 'Renovation', 'Closed') DEFAULT 'Operational',
+    Rental_Cost DECIMAL(12,2) DEFAULT 0,
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    CHECK (Capacity > 0),
+    CHECK (Rental_Cost >= 0),
+    INDEX idx_venue_city (City),
+    INDEX idx_venue_capacity (Capacity)
+);
+
+-- 4. Actor Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Actor (
+    Actor_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Actor_Name VARCHAR(100) NOT NULL,
+    Gender ENUM('Male', 'Female', 'Other'),
+    Nationality VARCHAR(50),
+    Birth_Year INT,
+    Debut_Year INT,
+    Agency VARCHAR(100),
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    CHECK (Birth_Year BETWEEN 1800 AND YEAR(CURDATE())),
+    CHECK (Debut_Year >= Birth_Year + 5),
+    INDEX idx_actor_name (Actor_Name),
+    INDEX idx_actor_nationality (Nationality),
+    INDEX idx_actor_gender (Gender)
+);
+
+-- 5. Movie Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Movie (
+    Movie_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Title VARCHAR(100) NOT NULL,
+    Genre ENUM('Drama', 'Comedy', 'Action', 'Thriller', 'Romance', 'Horror', 'Sci-Fi', 'Documentary', 'Animation', 'Other') NOT NULL,
+    Release_Year INT,
+    Duration INT,
+    Budget DECIMAL(15,2),
+    Revenue DECIMAL(15,2),
+    Language VARCHAR(50) DEFAULT 'English',
+    Country VARCHAR(50),
+    Festival_ID INT,
+    Director_ID INT,
+    Status ENUM('Released', 'Upcoming', 'Cancelled') DEFAULT 'Upcoming',
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (Festival_ID) REFERENCES Festival(Festival_ID) ON DELETE SET NULL,
+    FOREIGN KEY (Director_ID) REFERENCES Director(Director_ID) ON DELETE SET NULL,
+    CHECK (Release_Year BETWEEN 1900 AND YEAR(CURDATE()) + 5),
+    CHECK (Duration BETWEEN 1 AND 500),
+    CHECK (Budget >= 0),
+    CHECK (Revenue >= 0),
+    INDEX idx_movie_title (Title),
+    INDEX idx_movie_genre (Genre),
+    INDEX idx_movie_year (Release_Year),
+    INDEX idx_movie_status (Status)
+);
+
+-- 6. Movie_Actor Junction Table (Many-to-Many Relationship)
+CREATE TABLE Movie_Actor (
+    Movie_Actor_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Movie_ID INT NOT NULL,
+    Actor_ID INT NOT NULL,
+    Role VARCHAR(100),
+    Is_Lead BOOLEAN DEFAULT FALSE,
+    Salary DECIMAL(12,2),
+    Screen_Time INT, -- in minutes
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE KEY unique_movie_actor (Movie_ID, Actor_ID),
+    FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Actor_ID) REFERENCES Actor(Actor_ID) ON DELETE CASCADE,
+    CHECK (Salary >= 0),
+    CHECK (Screen_Time >= 0),
+    INDEX idx_movie_actor_lead (Is_Lead),
+    INDEX idx_movie_actor_salary (Salary)
+);
+
+-- 7. Movie_Venue Junction Table (Many-to-Many Relationship)
+CREATE TABLE Movie_Venue (
+    Screening_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Movie_ID INT NOT NULL,
+    Venue_ID INT NOT NULL,
+    Screening_Date DATE,
+    Screening_Time TIME,
+    Ticket_Price DECIMAL(8,2),
+    Tickets_Sold INT,
+    Tickets_Available INT,
+    Screening_Type ENUM('Premiere', 'Regular', 'Special') DEFAULT 'Regular',
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Venue_ID) REFERENCES Venue(Venue_ID) ON DELETE CASCADE,
+    CHECK (Ticket_Price >= 0),
+    CHECK (Tickets_Sold >= 0),
+    CHECK (Tickets_Available >= 0),
+    INDEX idx_screening_date (Screening_Date),
+    INDEX idx_screening_type (Screening_Type)
+);
+
+-- 8. Award Table (1NF, 2NF, 3NF Compliant)
+CREATE TABLE Award (
+    Award_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Award_Name VARCHAR(100) NOT NULL,
+    Year INT,
+    Category VARCHAR(100),
+    Movie_ID INT,
+    Actor_ID INT,
+    Director_ID INT,
+    Festival_ID INT,
+    Prize_Money DECIMAL(12,2),
+    Is_Winner BOOLEAN DEFAULT TRUE,
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Actor_ID) REFERENCES Actor(Actor_ID) ON DELETE SET NULL,
+    FOREIGN KEY (Director_ID) REFERENCES Director(Director_ID) ON DELETE SET NULL,
+    FOREIGN KEY (Festival_ID) REFERENCES Festival(Festival_ID) ON DELETE CASCADE,
+    CHECK (Year BETWEEN 1900 AND YEAR(CURDATE())),
+    CHECK (Prize_Money >= 0),
+    INDEX idx_award_year (Year),
+    INDEX idx_award_category (Category)
+);
+
+-- 9. Audit_Log Table for Tracking Changes
+CREATE TABLE Audit_Log (
+    Audit_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Table_Name VARCHAR(50) NOT NULL,
+    Record_ID INT NOT NULL,
+    Action_Type ENUM('INSERT', 'UPDATE', 'DELETE') NOT NULL,
+    Old_Values JSON,
+    New_Values JSON,
+    Changed_By VARCHAR(100) DEFAULT 'SYSTEM',
+    Changed_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_audit_table (Table_Name),
+    INDEX idx_audit_action (Action_Type),
+    INDEX idx_audit_timestamp (Changed_At)
+);
+
+-- 10. Festival_Committee Table (Additional Normalized Table)
+CREATE TABLE Festival_Committee (
+    Committee_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Festival_ID INT NOT NULL,
+    Member_Name VARCHAR(100) NOT NULL,
+    Role VARCHAR(50),
+    Email VARCHAR(100),
+    Phone VARCHAR(20),
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (Festival_ID) REFERENCES Festival(Festival_ID) ON DELETE CASCADE,
+    INDEX idx_committee_role (Role)
+);
+
+-- 11. Movie_Review Table (Additional Normalized Table)
+CREATE TABLE Movie_Review (
+    Review_ID INT PRIMARY KEY AUTO_INCREMENT,
+    Movie_ID INT NOT NULL,
+    Reviewer_Name VARCHAR(100),
+    Rating DECIMAL(3,1),
+    Review_Text TEXT,
+    Review_Date DATE,
+    Publication VARCHAR(100),
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+    CHECK (Rating BETWEEN 0 AND 10),
+    INDEX idx_review_rating (Rating),
+    INDEX idx_review_date (Review_Date)
+);
