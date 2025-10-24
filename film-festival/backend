@@ -1,0 +1,883 @@
+const express = require('express');
+const mysql = require('mysql2/promise');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// Database connection
+const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'film_festival_db',
+    multipleStatements: true
+};
+
+// Create connection pool
+const pool = mysql.createPool(dbConfig);
+
+// Initialize database with normalized schema and advanced features
+async function initializeDatabase() {
+    try {
+        const connection = await pool.getConnection();
+        
+        // Drop existing tables if they exist
+        await connection.execute(`DROP TABLE IF EXISTS Audit_Log`);
+        await connection.execute(`DROP TABLE IF EXISTS Movie_Actor`);
+        await connection.execute(`DROP TABLE IF EXISTS Movie_Venue`);
+        await connection.execute(`DROP TABLE IF EXISTS Award`);
+        await connection.execute(`DROP TABLE IF EXISTS Movie`);
+        await connection.execute(`DROP TABLE IF EXISTS Actor`);
+        await connection.execute(`DROP TABLE IF EXISTS Director`);
+        await connection.execute(`DROP TABLE IF EXISTS Venue`);
+        await connection.execute(`DROP TABLE IF EXISTS Festival`);
+        
+        // Create normalized tables
+        await connection.execute(`
+            CREATE TABLE Festival (
+                Festival_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Festival_Name VARCHAR(100) NOT NULL UNIQUE,
+                Location VARCHAR(100),
+                Start_Date DATE,
+                End_Date DATE,
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
+
+        await connection.execute(`
+            CREATE TABLE Director (
+                Director_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Director_Name VARCHAR(100) NOT NULL,
+                Nationality VARCHAR(50),
+                Birth_Year INT,
+                Active_Status ENUM('Active', 'Retired', 'Deceased') DEFAULT 'Active',
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CHECK (Birth_Year BETWEEN 1800 AND YEAR(CURDATE()))
+            )
+        `);
+
+        await connection.execute(`
+            CREATE TABLE Venue (
+                Venue_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Venue_Name VARCHAR(100) NOT NULL,
+                City VARCHAR(50),
+                Capacity INT,
+                Status ENUM('Operational', 'Renovation', 'Closed') DEFAULT 'Operational',
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CHECK (Capacity > 0)
+            )
+        `);
+
+        await connection.execute(`
+            CREATE TABLE Actor (
+                Actor_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Actor_Name VARCHAR(100) NOT NULL,
+                Gender ENUM('Male', 'Female', 'Other'),
+                Nationality VARCHAR(50),
+                Birth_Year INT,
+                Debut_Year INT,
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CHECK (Birth_Year BETWEEN 1800 AND YEAR(CURDATE())),
+                CHECK (Debut_Year >= Birth_Year + 5)
+            )
+        `);
+
+        await connection.execute(`
+            CREATE TABLE Movie (
+                Movie_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Title VARCHAR(100) NOT NULL,
+                Genre ENUM('Drama', 'Comedy', 'Action', 'Thriller', 'Romance', 'Horror', 'Sci-Fi', 'Documentary', 'Animation', 'Other'),
+                Release_Year INT,
+                Duration INT,
+                Budget DECIMAL(15,2),
+                Revenue DECIMAL(15,2),
+                Festival_ID INT,
+                Director_ID INT,
+                Status ENUM('Released', 'Upcoming', 'Cancelled') DEFAULT 'Upcoming',
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                Updated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (Festival_ID) REFERENCES Festival(Festival_ID) ON DELETE SET NULL,
+                FOREIGN KEY (Director_ID) REFERENCES Director(Director_ID) ON DELETE SET NULL,
+                CHECK (Release_Year BETWEEN 1900 AND YEAR(CURDATE()) + 5),
+                CHECK (Duration BETWEEN 1 AND 500),
+                CHECK (Budget >= 0),
+                CHECK (Revenue >= 0)
+            )
+        `);
+
+        // Junction table for many-to-many relationship between Movie and Actor
+        await connection.execute(`
+            CREATE TABLE Movie_Actor (
+                Movie_Actor_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Movie_ID INT,
+                Actor_ID INT,
+                Role VARCHAR(100),
+                Is_Lead BOOLEAN DEFAULT FALSE,
+                Salary DECIMAL(12,2),
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_movie_actor (Movie_ID, Actor_ID),
+                FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+                FOREIGN KEY (Actor_ID) REFERENCES Actor(Actor_ID) ON DELETE CASCADE,
+                CHECK (Salary >= 0)
+            )
+        `);
+
+        // Junction table for many-to-many relationship between Movie and Venue
+        await connection.execute(`
+            CREATE TABLE Movie_Venue (
+                Screening_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Movie_ID INT,
+                Venue_ID INT,
+                Screening_Date DATE,
+                Screening_Time TIME,
+                Ticket_Price DECIMAL(8,2),
+                Tickets_Sold INT,
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+                FOREIGN KEY (Venue_ID) REFERENCES Venue(Venue_ID) ON DELETE CASCADE,
+                CHECK (Ticket_Price >= 0),
+                CHECK (Tickets_Sold >= 0)
+            )
+        `);
+
+        await connection.execute(`
+            CREATE TABLE Award (
+                Award_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Award_Name VARCHAR(100) NOT NULL,
+                Year INT,
+                Category VARCHAR(100),
+                Movie_ID INT,
+                Actor_ID INT,
+                Director_ID INT,
+                Festival_ID INT,
+                Prize_Money DECIMAL(12,2),
+                Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (Movie_ID) REFERENCES Movie(Movie_ID) ON DELETE CASCADE,
+                FOREIGN KEY (Actor_ID) REFERENCES Actor(Actor_ID) ON DELETE SET NULL,
+                FOREIGN KEY (Director_ID) REFERENCES Director(Director_ID) ON DELETE SET NULL,
+                FOREIGN KEY (Festival_ID) REFERENCES Festival(Festival_ID) ON DELETE CASCADE,
+                CHECK (Year BETWEEN 1900 AND YEAR(CURDATE())),
+                CHECK (Prize_Money >= 0)
+            )
+        `);
+
+        // Audit table for tracking changes
+        await connection.execute(`
+            CREATE TABLE Audit_Log (
+                Audit_ID INT PRIMARY KEY AUTO_INCREMENT,
+                Table_Name VARCHAR(50),
+                Record_ID INT,
+                Action_Type ENUM('INSERT', 'UPDATE', 'DELETE'),
+                Old_Values JSON,
+                New_Values JSON,
+                Changed_By VARCHAR(100) DEFAULT 'SYSTEM',
+                Changed_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Create Views
+        await connection.execute(`
+            CREATE VIEW Movie_Details_View AS
+            SELECT 
+                m.Movie_ID,
+                m.Title,
+                m.Genre,
+                m.Release_Year,
+                m.Duration,
+                m.Budget,
+                m.Revenue,
+                m.Status,
+                ROUND((m.Revenue - m.Budget) / NULLIF(m.Budget, 0) * 100, 2) as ROI_Percentage,
+                f.Festival_Name,
+                f.Location as Festival_Location,
+                d.Director_Name,
+                d.Nationality as Director_Nationality,
+                COUNT(DISTINCT ma.Actor_ID) as Actor_Count,
+                COUNT(DISTINCT mv.Screening_ID) as Screening_Count
+            FROM Movie m
+            LEFT JOIN Festival f ON m.Festival_ID = f.Festival_ID
+            LEFT JOIN Director d ON m.Director_ID = d.Director_ID
+            LEFT JOIN Movie_Actor ma ON m.Movie_ID = ma.Movie_ID
+            LEFT JOIN Movie_Venue mv ON m.Movie_ID = mv.Movie_ID
+            GROUP BY m.Movie_ID
+        `);
+
+        await connection.execute(`
+            CREATE VIEW Award_Winners_View AS
+            SELECT 
+                a.Award_ID,
+                a.Award_Name,
+                a.Category,
+                a.Year,
+                a.Prize_Money,
+                m.Title as Movie_Title,
+                d.Director_Name,
+                act.Actor_Name,
+                f.Festival_Name,
+                f.Location as Festival_Location
+            FROM Award a
+            LEFT JOIN Movie m ON a.Movie_ID = m.Movie_ID
+            LEFT JOIN Director d ON a.Director_ID = d.Director_ID
+            LEFT JOIN Actor act ON a.Actor_ID = act.Actor_ID
+            LEFT JOIN Festival f ON a.Festival_ID = f.Festival_ID
+            ORDER BY a.Year DESC, a.Award_Name
+        `);
+
+        await connection.execute(`
+            CREATE VIEW Movie_Cast_View AS
+            SELECT 
+                m.Movie_ID,
+                m.Title,
+                m.Release_Year,
+                a.Actor_ID,
+                a.Actor_Name,
+                ma.Role,
+                ma.Is_Lead,
+                ma.Salary,
+                a.Gender,
+                a.Nationality,
+                a.Debut_Year
+            FROM Movie m
+            JOIN Movie_Actor ma ON m.Movie_ID = ma.Movie_ID
+            JOIN Actor a ON ma.Actor_ID = a.Actor_ID
+            ORDER BY ma.Is_Lead DESC, ma.Salary DESC
+        `);
+
+        await connection.execute(`
+            CREATE VIEW Festival_Statistics_View AS
+            SELECT 
+                f.Festival_ID,
+                f.Festival_Name,
+                f.Location,
+                f.Start_Date,
+                f.End_Date,
+                COUNT(DISTINCT m.Movie_ID) as Total_Movies,
+                COUNT(DISTINCT a.Award_ID) as Total_Awards,
+                COUNT(DISTINCT mv.Screening_ID) as Total_Screenings,
+                SUM(mv.Tickets_Sold) as Total_Tickets_Sold,
+                SUM(mv.Tickets_Sold * mv.Ticket_Price) as Total_Revenue,
+                AVG(m.Budget) as Avg_Movie_Budget
+            FROM Festival f
+            LEFT JOIN Movie m ON f.Festival_ID = m.Festival_ID
+            LEFT JOIN Award a ON f.Festival_ID = a.Festival_ID
+            LEFT JOIN Movie_Venue mv ON m.Movie_ID = mv.Movie_ID
+            GROUP BY f.Festival_ID
+        `);
+
+        await connection.execute(`
+            CREATE VIEW Actor_Statistics_View AS
+            SELECT 
+                a.Actor_ID,
+                a.Actor_Name,
+                a.Gender,
+                a.Nationality,
+                COUNT(DISTINCT ma.Movie_ID) as Total_Movies,
+                SUM(CASE WHEN ma.Is_Lead = TRUE THEN 1 ELSE 0 END) as Lead_Roles,
+                AVG(ma.Salary) as Avg_Salary,
+                SUM(ma.Salary) as Total_Salary,
+                MIN(m.Release_Year) as First_Movie_Year,
+                MAX(m.Release_Year) as Latest_Movie_Year
+            FROM Actor a
+            LEFT JOIN Movie_Actor ma ON a.Actor_ID = ma.Actor_ID
+            LEFT JOIN Movie m ON ma.Movie_ID = m.Movie_ID
+            GROUP BY a.Actor_ID
+        `);
+
+        // Create Advanced Triggers
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER before_movie_insert
+            BEFORE INSERT ON Movie
+            FOR EACH ROW
+            BEGIN
+                -- Validate release year
+                IF NEW.Release_Year > YEAR(CURDATE()) + 5 THEN
+                    SET NEW.Release_Year = YEAR(CURDATE());
+                END IF;
+                
+                -- Auto-set status based on release year
+                IF NEW.Release_Year <= YEAR(CURDATE()) THEN
+                    SET NEW.Status = 'Released';
+                ELSE
+                    SET NEW.Status = 'Upcoming';
+                END IF;
+                
+                -- Ensure budget and revenue are reasonable
+                IF NEW.Budget > 1000000000 THEN
+                    SET NEW.Budget = 1000000000;
+                END IF;
+                
+                IF NEW.Revenue > 5000000000 THEN
+                    SET NEW.Revenue = 5000000000;
+                END IF;
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER before_movie_update
+            BEFORE UPDATE ON Movie
+            FOR EACH ROW
+            BEGIN
+                -- Prevent decreasing revenue
+                IF NEW.Revenue < OLD.Revenue THEN
+                    SET NEW.Revenue = OLD.Revenue;
+                END IF;
+                
+                -- Update status if release year changes
+                IF NEW.Release_Year <= YEAR(CURDATE()) AND OLD.Release_Year > YEAR(CURDATE()) THEN
+                    SET NEW.Status = 'Released';
+                END IF;
+                
+                -- Track significant budget changes
+                IF ABS(NEW.Budget - OLD.Budget) > (OLD.Budget * 0.5) THEN
+                    INSERT INTO Audit_Log (Table_Name, Record_ID, Action_Type, Old_Values, New_Values, Changed_By)
+                    VALUES ('Movie', NEW.Movie_ID, 'UPDATE', 
+                           JSON_OBJECT('Budget', OLD.Budget), 
+                           JSON_OBJECT('Budget', NEW.Budget),
+                           'SYSTEM');
+                END IF;
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER after_movie_insert_audit
+            AFTER INSERT ON Movie
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO Audit_Log (Table_Name, Record_ID, Action_Type, New_Values)
+                VALUES ('Movie', NEW.Movie_ID, 'INSERT', 
+                       JSON_OBJECT('Title', NEW.Title, 'Genre', NEW.Genre, 'Release_Year', NEW.Release_Year, 'Budget', NEW.Budget));
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER after_movie_actor_insert
+            AFTER INSERT ON Movie_Actor
+            FOR EACH ROW
+            BEGIN
+                -- Update actor statistics
+                UPDATE Actor 
+                SET Updated_At = CURRENT_TIMESTAMP 
+                WHERE Actor_ID = NEW.Actor_ID;
+                
+                -- Log the casting
+                INSERT INTO Audit_Log (Table_Name, Record_ID, Action_Type, New_Values)
+                VALUES ('Movie_Actor', NEW.Movie_Actor_ID, 'INSERT',
+                       JSON_OBJECT('Movie_ID', NEW.Movie_ID, 'Actor_ID', NEW.Actor_ID, 'Role', NEW.Role, 'Salary', NEW.Salary));
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER before_screening_insert
+            BEFORE INSERT ON Movie_Venue
+            FOR EACH ROW
+            BEGIN
+                DECLARE venue_capacity INT;
+                DECLARE festival_start DATE;
+                DECLARE festival_end DATE;
+                
+                -- Get venue capacity
+                SELECT Capacity INTO venue_capacity FROM Venue WHERE Venue_ID = NEW.Venue_ID;
+                
+                -- Check if tickets sold exceed capacity
+                IF NEW.Tickets_Sold > venue_capacity THEN
+                    SET NEW.Tickets_Sold = venue_capacity;
+                END IF;
+                
+                -- Get festival dates for the movie
+                SELECT f.Start_Date, f.End_Date INTO festival_start, festival_end
+                FROM Movie m
+                JOIN Festival f ON m.Festival_ID = f.Festival_ID
+                WHERE m.Movie_ID = NEW.Movie_ID;
+                
+                -- Ensure screening date is within festival dates
+                IF festival_start IS NOT NULL AND festival_end IS NOT NULL THEN
+                    IF NEW.Screening_Date < festival_start OR NEW.Screening_Date > festival_end THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Screening date must be within festival dates';
+                    END IF;
+                END IF;
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER after_award_insert
+            AFTER INSERT ON Award
+            FOR EACH ROW
+            BEGIN
+                -- Update movie statistics if award is for a movie
+                IF NEW.Movie_ID IS NOT NULL THEN
+                    UPDATE Movie 
+                    SET Updated_At = CURRENT_TIMESTAMP 
+                    WHERE Movie_ID = NEW.Movie_ID;
+                END IF;
+                
+                -- Update actor statistics if award is for an actor
+                IF NEW.Actor_ID IS NOT NULL THEN
+                    UPDATE Actor 
+                    SET Updated_At = CURRENT_TIMESTAMP 
+                    WHERE Actor_ID = NEW.Actor_ID;
+                END IF;
+                
+                -- Log award assignment
+                INSERT INTO Audit_Log (Table_Name, Record_ID, Action_Type, New_Values)
+                VALUES ('Award', NEW.Award_ID, 'INSERT',
+                       JSON_OBJECT('Award_Name', NEW.Award_Name, 'Category', NEW.Category, 'Year', NEW.Year, 'Prize_Money', NEW.Prize_Money));
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER check_actor_age
+            BEFORE INSERT ON Actor
+            FOR EACH ROW
+            BEGIN
+                IF NEW.Birth_Year > (YEAR(CURDATE()) - 5) THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Actor must be at least 5 years old';
+                END IF;
+                
+                IF NEW.Debut_Year < NEW.Birth_Year + 5 THEN
+                    SET NEW.Debut_Year = NEW.Birth_Year + 5;
+                END IF;
+            END//
+            DELIMITER ;
+        `);
+
+        await connection.execute(`
+            DELIMITER //
+            CREATE TRIGGER prevent_festival_date_overlap
+            BEFORE INSERT ON Festival
+            FOR EACH ROW
+            BEGIN
+                DECLARE overlapping_count INT;
+                
+                SELECT COUNT(*) INTO overlapping_count
+                FROM Festival f
+                WHERE f.Location = NEW.Location
+                AND f.Festival_ID != COALESCE(NEW.Festival_ID, -1)
+                AND (NEW.Start_Date BETWEEN f.Start_Date AND f.End_Date
+                     OR NEW.End_Date BETWEEN f.Start_Date AND f.End_Date
+                     OR f.Start_Date BETWEEN NEW.Start_Date AND NEW.End_Date);
+                
+                IF overlapping_count > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Festival dates overlap with existing festival in same location';
+                END IF;
+            END//
+            DELIMITER ;
+        `);
+
+        // Insert sample data
+        await insertSampleData(connection);
+        
+        connection.release();
+        console.log('Database initialized successfully with advanced features');
+    } catch (error) {
+        console.error('Database initialization error:', error);
+    }
+}
+
+async function insertSampleData(connection) {
+    // Insert Festivals
+    await connection.execute(
+        'INSERT INTO Festival (Festival_Name, Location, Start_Date, End_Date) VALUES ?',
+        [[
+            ['Cannes Film Festival', 'Cannes, France', '2024-05-14', '2024-05-25'],
+            ['Sundance Film Festival', 'Park City, Utah', '2024-01-18', '2024-01-28'],
+            ['Toronto International Film Festival', 'Toronto, Canada', '2024-09-05', '2024-09-15'],
+            ['Venice Film Festival', 'Venice, Italy', '2024-08-28', '2024-09-07']
+        ]]
+    );
+
+    // Insert Directors
+    await connection.execute(
+        'INSERT INTO Director (Director_Name, Nationality, Birth_Year, Active_Status) VALUES ?',
+        [[
+            ['Christopher Nolan', 'British', 1970, 'Active'],
+            ['Jane Campion', 'New Zealander', 1954, 'Active'],
+            ['Bong Joon-ho', 'South Korean', 1969, 'Active'],
+            ['Sofia Coppola', 'American', 1971, 'Active'],
+            ['Martin Scorsese', 'American', 1942, 'Active'],
+            ['Quentin Tarantino', 'American', 1963, 'Active']
+        ]]
+    );
+
+    // Insert Venues
+    await connection.execute(
+        'INSERT INTO Venue (Venue_Name, City, Capacity, Status) VALUES ?',
+        [[
+            ['Grand Théâtre Lumière', 'Cannes', 2300, 'Operational'],
+            ['Library Center Theatre', 'Park City', 450, 'Operational'],
+            ['Roy Thomson Hall', 'Toronto', 2600, 'Operational'],
+            ['Princess of Wales Theatre', 'Toronto', 2000, 'Operational'],
+            ['Sala Grande', 'Venice', 1400, 'Operational']
+        ]]
+    );
+
+    // Insert Actors
+    await connection.execute(
+        'INSERT INTO Actor (Actor_Name, Gender, Nationality, Birth_Year, Debut_Year) VALUES ?',
+        [[
+            ['Cillian Murphy', 'Male', 'Irish', 1976, 1996],
+            ['Florence Pugh', 'Female', 'British', 1996, 2014],
+            ['Song Kang-ho', 'Male', 'South Korean', 1967, 1991],
+            ['Kirsten Dunst', 'Female', 'American', 1982, 1989],
+            ['Jesse Plemons', 'Male', 'American', 1988, 1998],
+            ['Leonardo DiCaprio', 'Male', 'American', 1974, 1989],
+            ['Margot Robbie', 'Female', 'Australian', 1990, 2008]
+        ]]
+    );
+
+    // Insert Movies
+    await connection.execute(
+        'INSERT INTO Movie (Title, Genre, Release_Year, Duration, Budget, Revenue, Festival_ID, Director_ID, Status) VALUES ?',
+        [[
+            ['Oppenheimer', 'Drama', 2023, 180, 100000000, 950000000, 1, 1, 'Released'],
+            ['The Power of the Dog', 'Drama', 2021, 126, 35000000, 12000000, 2, 2, 'Released'],
+            ['Parasite', 'Thriller', 2019, 132, 11400000, 258000000, 1, 3, 'Released'],
+            ['The Beguiled', 'Drama', 2017, 93, 10000000, 27000000, 3, 4, 'Released'],
+            ['Killers of the Flower Moon', 'Drama', 2023, 206, 200000000, 156000000, 4, 5, 'Released'],
+            ['Next Big Film', 'Action', 2025, 150, 50000000, 0, 1, 6, 'Upcoming']
+        ]]
+    );
+
+    // Insert Movie-Actor relationships
+    await connection.execute(
+        'INSERT INTO Movie_Actor (Movie_ID, Actor_ID, Role, Is_Lead, Salary) VALUES ?',
+        [[
+            [1, 1, 'J. Robert Oppenheimer', true, 5000000],
+            [1, 2, 'Jean Tatlock', false, 1000000],
+            [2, 4, 'Rose Gordon', true, 2000000],
+            [2, 5, 'George Burbank', true, 1500000],
+            [3, 3, 'Kim Ki-taek', true, 500000],
+            [4, 4, 'Edwina Dabney', true, 3000000],
+            [5, 6, 'Ernest Burkhart', true, 20000000],
+            [5, 7, 'Mollie Kyle', true, 10000000]
+        ]]
+    );
+
+    // Insert Movie-Venue relationships
+    await connection.execute(
+        'INSERT INTO Movie_Venue (Movie_ID, Venue_ID, Screening_Date, Screening_Time, Ticket_Price, Tickets_Sold) VALUES ?',
+        [[
+            [1, 1, '2024-05-15', '20:00:00', 25.00, 2000],
+            [2, 2, '2024-01-20', '19:30:00', 20.00, 400],
+            [3, 1, '2024-05-18', '18:00:00', 22.50, 1800],
+            [4, 3, '2024-09-08', '21:00:00', 18.00, 1500],
+            [5, 5, '2024-09-01', '20:30:00', 30.00, 1200],
+            [1, 3, '2024-05-20', '19:00:00', 25.00, 2200]
+        ]]
+    );
+
+    // Insert Awards
+    await connection.execute(
+        'INSERT INTO Award (Award_Name, Year, Category, Movie_ID, Actor_ID, Director_ID, Festival_ID, Prize_Money) VALUES ?',
+        [[
+            ['Palme d\'Or', 2023, 'Best Film', 1, NULL, 1, 1, 50000],
+            ['Best Director', 2021, 'Direction', 2, NULL, 2, 2, 25000],
+            ['Best Actor', 2023, 'Acting', 1, 1, NULL, 1, 20000],
+            ['Best Actress', 2021, 'Acting', 2, 4, NULL, 2, 20000],
+            ['Golden Lion', 2023, 'Best Film', 5, NULL, 5, 4, 60000],
+            ['Jury Prize', 2019, 'Special Award', 3, NULL, 3, 1, 15000]
+        ]]
+    );
+}
+
+// API Routes
+
+// Get all movies with details (3-table join)
+app.get('/api/movies', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT 
+                m.Movie_ID,
+                m.Title,
+                m.Genre,
+                m.Release_Year,
+                m.Duration,
+                m.Budget,
+                m.Revenue,
+                m.Status,
+                ROUND((m.Revenue - m.Budget) / NULLIF(m.Budget, 0) * 100, 2) as ROI_Percentage,
+                f.Festival_Name,
+                d.Director_Name
+            FROM Movie m
+            LEFT JOIN Festival f ON m.Festival_ID = f.Festival_ID
+            LEFT JOIN Director d ON m.Director_ID = d.Director_ID
+            ORDER BY m.Release_Year DESC
+        `);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get movie details with cast and screenings (4-table join)
+app.get('/api/movies/:id/details', async (req, res) => {
+    try {
+        const movieId = req.params.id;
+        
+        const [movieDetails] = await pool.execute(`
+            SELECT 
+                m.*,
+                f.Festival_Name,
+                f.Location as Festival_Location,
+                d.Director_Name,
+                d.Nationality as Director_Nationality,
+                ROUND((m.Revenue - m.Budget) / NULLIF(m.Budget, 0) * 100, 2) as ROI_Percentage
+            FROM Movie m
+            LEFT JOIN Festival f ON m.Festival_ID = f.Festival_ID
+            LEFT JOIN Director d ON m.Director_ID = d.Director_ID
+            WHERE m.Movie_ID = ?
+        `, [movieId]);
+
+        const [cast] = await pool.execute(`
+            SELECT 
+                a.Actor_Name,
+                ma.Role,
+                ma.Is_Lead,
+                ma.Salary,
+                a.Gender,
+                a.Nationality
+            FROM Movie_Actor ma
+            JOIN Actor a ON ma.Actor_ID = a.Actor_ID
+            WHERE ma.Movie_ID = ?
+            ORDER BY ma.Is_Lead DESC, ma.Salary DESC
+        `, [movieId]);
+
+        const [screenings] = await pool.execute(`
+            SELECT 
+                v.Venue_Name,
+                v.City,
+                mv.Screening_Date,
+                mv.Screening_Time,
+                mv.Ticket_Price,
+                mv.Tickets_Sold,
+                (mv.Ticket_Price * mv.Tickets_Sold) as Screening_Revenue
+            FROM Movie_Venue mv
+            JOIN Venue v ON mv.Venue_ID = v.Venue_ID
+            WHERE mv.Movie_ID = ?
+            ORDER BY mv.Screening_Date, mv.Screening_Time
+        `, [movieId]);
+
+        const [awards] = await pool.execute(`
+            SELECT 
+                a.Award_Name,
+                a.Category,
+                a.Year,
+                a.Prize_Money
+            FROM Award a
+            WHERE a.Movie_ID = ?
+            ORDER BY a.Year DESC
+        `, [movieId]);
+
+        res.json({
+            movie: movieDetails[0],
+            cast: cast,
+            screenings: screenings,
+            awards: awards
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get award winners with movie and festival details (5-table join)
+app.get('/api/awards', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT 
+                a.Award_Name,
+                a.Category,
+                a.Year,
+                a.Prize_Money,
+                m.Title as Movie_Title,
+                d.Director_Name,
+                act.Actor_Name,
+                f.Festival_Name,
+                f.Location as Festival_Location
+            FROM Award a
+            LEFT JOIN Movie m ON a.Movie_ID = m.Movie_ID
+            LEFT JOIN Director d ON a.Director_ID = d.Director_ID
+            LEFT JOIN Actor act ON a.Actor_ID = act.Actor_ID
+            LEFT JOIN Festival f ON a.Festival_ID = f.Festival_ID
+            ORDER BY a.Year DESC, a.Award_Name
+        `);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get festival details with movies and venues (complex join)
+app.get('/api/festivals/:id', async (req, res) => {
+    try {
+        const festivalId = req.params.id;
+        
+        const [festivalDetails] = await pool.execute(`
+            SELECT 
+                f.*,
+                COUNT(DISTINCT m.Movie_ID) as Movie_Count,
+                COUNT(DISTINCT a.Award_ID) as Award_Count,
+                COUNT(DISTINCT mv.Screening_ID) as Screening_Count,
+                SUM(mv.Tickets_Sold) as Total_Tickets_Sold,
+                SUM(mv.Tickets_Sold * mv.Ticket_Price) as Total_Revenue
+            FROM Festival f
+            LEFT JOIN Movie m ON f.Festival_ID = m.Festival_ID
+            LEFT JOIN Award a ON f.Festival_ID = a.Festival_ID
+            LEFT JOIN Movie_Venue mv ON m.Movie_ID = mv.Movie_ID
+            WHERE f.Festival_ID = ?
+            GROUP BY f.Festival_ID
+        `, [festivalId]);
+
+        const [movies] = await pool.execute(`
+            SELECT 
+                m.Movie_ID,
+                m.Title,
+                m.Genre,
+                m.Release_Year,
+                m.Budget,
+                m.Revenue,
+                d.Director_Name
+            FROM Movie m
+            LEFT JOIN Director d ON m.Director_ID = d.Director_ID
+            WHERE m.Festival_ID = ?
+        `, [festivalId]);
+
+        const [screenings] = await pool.execute(`
+            SELECT 
+                m.Title as Movie_Title,
+                v.Venue_Name,
+                v.City,
+                mv.Screening_Date,
+                mv.Screening_Time,
+                mv.Ticket_Price,
+                mv.Tickets_Sold
+            FROM Movie_Venue mv
+            JOIN Movie m ON mv.Movie_ID = m.Movie_ID
+            JOIN Venue v ON mv.Venue_ID = v.Venue_ID
+            WHERE m.Festival_ID = ?
+            ORDER BY mv.Screening_Date, mv.Screening_Time
+        `, [festivalId]);
+
+        res.json({
+            festival: festivalDetails[0],
+            movies: movies,
+            screenings: screenings
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get view data
+app.get('/api/views/movie-details', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM Movie_Details_View');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/views/award-winners', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM Award_Winners_View');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/views/festival-statistics', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM Festival_Statistics_View');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/views/actor-statistics', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM Actor_Statistics_View');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get audit logs
+app.get('/api/audit-logs', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT * FROM Audit_Log 
+            ORDER BY Changed_At DESC 
+            LIMIT 100
+        `);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add new movie
+app.post('/api/movies', async (req, res) => {
+    try {
+        const { Title, Genre, Release_Year, Duration, Budget, Revenue, Festival_ID, Director_ID } = req.body;
+        
+        const [result] = await pool.execute(
+            `INSERT INTO Movie (Title, Genre, Release_Year, Duration, Budget, Revenue, Festival_ID, Director_ID) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [Title, Genre, Release_Year, Duration, Budget, Revenue, Festival_ID, Director_ID]
+        );
+        
+        res.json({ message: 'Movie added successfully', movieId: result.insertId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add new actor to movie
+app.post('/api/movies/:id/cast', async (req, res) => {
+    try {
+        const movieId = req.params.id;
+        const { Actor_ID, Role, Is_Lead, Salary } = req.body;
+        
+        const [result] = await pool.execute(
+            `INSERT INTO Movie_Actor (Movie_ID, Actor_ID, Role, Is_Lead, Salary) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [movieId, Actor_ID, Role, Is_Lead, Salary]
+        );
+        
+        res.json({ message: 'Actor added to movie successfully', recordId: result.insertId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Initialize database and start server
+initializeDatabase().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Access the application at: http://localhost:${PORT}`);
+    });
+});
