@@ -183,22 +183,34 @@ const Result = mongoose.model('Result', resultSchema);
 // Auth middleware
 const auth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+    // accept Authorization: Bearer <token> or ?token=... or cookie
+    let token = req.header('Authorization')?.replace('Bearer ', '') || req.query?.token || (req.cookies && req.cookies.token);
+
     if (!token) {
+      console.warn('Auth middleware: no token provided for', req.method, req.originalUrl);
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
-    
-    const decoded = jwt.verify(token, 'quiz-app-secret');
-    const user = await User.findById(decoded.id);
-    
-    if (!user) {
+
+    console.log('Auth middleware: token received (first 20 chars):', String(token).slice(0, 20));
+
+    try {
+      const decoded = jwt.verify(token, 'quiz-app-secret');
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        console.warn('Auth middleware: token valid but user not found, id:', decoded.id);
+        return res.status(401).json({ message: 'Token is not valid' });
+      }
+      req.user = user;
+      next();
+    } catch (err) {
+      console.error('Auth middleware - token verify error:', err.name, err.message);
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token expired' });
+      }
       return res.status(401).json({ message: 'Token is not valid' });
     }
-    
-    req.user = user;
-    next();
   } catch (error) {
+    console.error('Auth middleware general error:', error);
     res.status(401).json({ message: 'Token is not valid' });
   }
 };
