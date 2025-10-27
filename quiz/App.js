@@ -403,7 +403,7 @@ function QuizList() {
 }
 
 
-// ...existing code...
+// Quiz Card Component
 function QuizCard({ quiz }) {
   const { navigateTo, API_BASE } = React.useContext(AuthContext);
 
@@ -477,8 +477,6 @@ function QuizCard({ quiz }) {
     </div>
   );
 }
-// ...existing code...
-
 
 // Take Quiz Component - COMPLETELY FIXED VERSION
 function TakeQuiz() {
@@ -690,7 +688,7 @@ function TakeQuiz() {
           
           <div className="score-display">
             <div className="score-circle">
-              <span className="score-percentage">{result.percentage}%</span>
+              <PieChart percentage={result.percentage || 0} size={140} strokeWidth={14} />
             </div>
             <div className="score-details">
               <p className="score-text">
@@ -845,12 +843,14 @@ function TakeQuiz() {
 
 // Results Component
 function Results() {
-  const { user, API_BASE, navigateTo } = React.useContext(AuthContext);
+  const { user, API_BASE, navigateTo, logout } = React.useContext(AuthContext);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchResults = async () => {
+    setLoading(true);
+    setError('');
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/results/user`, {
@@ -858,15 +858,27 @@ function Results() {
           'Authorization': `Bearer ${token}`
         }
       });
+
+      // Handle unauthorized / invalid token
+      if (response.status === 401) {
+        // clear auth and inform user
+        logout();
+        setError('Session expired or token invalid. Please login again.');
+        setLoading(false);
+        // navigate to login screen
+        navigateTo('login');
+        return;
+      }
+
       const data = await response.json();
-      if (data.success) {
-        setResults(data.results);
+      if (response.ok && data.success) {
+        setResults(data.results || []);
       } else {
         setError(data.message || 'Failed to load results');
       }
-    } catch (error) {
+    } catch (err) {
       setError('Failed to connect to server');
-      console.error('Error fetching results:', error);
+      console.error('Error fetching results:', err);
     } finally {
       setLoading(false);
     }
@@ -876,6 +888,7 @@ function Results() {
     if (user) {
       fetchResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!user) return (
@@ -923,23 +936,32 @@ function Results() {
                   {result.score}/{result.totalPoints || result.totalQuestions}
                 </span>
               </div>
-              <div className="result-details">
-                <div className="result-meta">
-                  <span className={`percentage ${result.percentage >= 70 ? 'high-score' : result.percentage >= 50 ? 'medium-score' : 'low-score'}`}>
-                    {result.percentage}%
-                  </span>
-                  <span className="date">
-                    {new Date(result.completedAt).toLocaleDateString()}
-                  </span>
+
+              {/* NEW: show pie chart + details side by side */}
+              <div className="result-details" style={{display:'flex', alignItems:'center', gap:'16px', paddingTop: 8}}>
+                <div style={{flex:'0 0 auto'}}>
+                  <PieChart percentage={result.percentage || 0} size={88} strokeWidth={10} />
                 </div>
-                <div className="result-stats">
-                  <div className="stat">
-                    <label>Time Taken</label>
-                    <span>{Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</span>
+
+                <div style={{flex:'1 1 auto'}}>
+                  <div className="result-meta" style={{display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap'}}>
+                    <span className={`percentage ${result.percentage >= 70 ? 'high-score' : result.percentage >= 50 ? 'medium-score' : 'low-score'}`} style={{fontSize:20, fontWeight:700}}>
+                      {result.percentage}%
+                    </span>
+                    <span className="date">
+                      {new Date(result.completedAt).toLocaleDateString()}
+                    </span>
                   </div>
-                  <div className="stat">
-                    <label>Questions</label>
-                    <span>{result.totalQuestions}</span>
+
+                  <div className="result-stats" style={{marginTop:10, display:'flex', gap:'16px', flexWrap:'wrap'}}>
+                    <div className="stat">
+                      <label>Time Taken</label>
+                      <div>{Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</div>
+                    </div>
+                    <div className="stat">
+                      <label>Questions</label>
+                      <div>{result.totalQuestions}</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1251,6 +1273,41 @@ function CreateQuiz() {
         </div>
       </form>
     </div>
+  );
+}
+
+// Add PieChart component (place before Results)
+function PieChart({ percentage = 0, size = 88, strokeWidth = 10, filledColor = '#4caf50', emptyColor = '#e6e6e6' }) {
+  const pct = Math.max(0, Math.min(100, Number(percentage) || 0));
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - pct / 100);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{display:'block'}}>
+      <g transform={`translate(${size / 2}, ${size / 2})`}>
+        <circle r={radius} fill="none" stroke={emptyColor} strokeWidth={strokeWidth} />
+        <circle
+          r={radius}
+          fill="none"
+          stroke={filledColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90)"
+        />
+        <text
+          x="0"
+          y="0"
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={{ fontSize: 14, fontWeight: 700, fill: '#222' }}
+        >
+          {Math.round(pct)}%
+        </text>
+      </g>
+    </svg>
   );
 }
 
