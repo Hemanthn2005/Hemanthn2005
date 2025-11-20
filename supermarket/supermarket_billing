@@ -1,0 +1,219 @@
+DROP DATABASE supermarket_billing;
+CREATE DATABASE supermarket_billing;
+
+-- Use the database
+USE supermarket_billing;
+-- Categories table
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY AUTO_INCREMENT,
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Products table
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(255) NOT NULL,
+    category_id INT,
+    price DECIMAL(10,2) NOT NULL,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    barcode VARCHAR(50) UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE SET NULL
+);
+
+-- Customers table
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    address TEXT,
+    loyalty_points INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Employees table
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    phone VARCHAR(20),
+    role VARCHAR(100) NOT NULL,
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bills table
+CREATE TABLE bills (
+    bill_id INT PRIMARY KEY AUTO_INCREMENT,
+    bill_number VARCHAR(50) UNIQUE NOT NULL,
+    customer_id INT,
+    employee_id INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    final_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    payment_method ENUM('cash', 'card', 'upi', 'wallet') DEFAULT 'cash',
+    bill_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE SET NULL,
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+
+-- Bill items table
+CREATE TABLE bill_items (
+    bill_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    bill_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (bill_id) REFERENCES bills(bill_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Inventory transactions table
+CREATE TABLE inventory_transactions (
+    transaction_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    transaction_type ENUM('IN', 'OUT', 'ADJUST') NOT NULL,
+    quantity INT NOT NULL,
+    reference_type ENUM('PURCHASE', 'SALE', 'ADJUSTMENT') NOT NULL,
+    reference_id INT,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+-- Insert categories
+INSERT INTO categories (category_name, description) VALUES 
+('Groceries', 'Daily essential groceries'),
+('Electronics', 'Electronic items and gadgets'),
+('Dairy', 'Milk and dairy products'),
+('Beverages', 'Drinks and beverages'),
+('Snacks', 'Snacks and quick bites');
+
+-- Insert products
+INSERT INTO products (product_name, category_id, price, stock_quantity, barcode) VALUES 
+('Rice 1kg', 1, 45.00, 100, '123456789012'),
+('Wheat Flour 1kg', 1, 30.00, 80, '123456789013'),
+('Milk 1L', 3, 25.00, 50, '123456789014'),
+('Bread', 1, 20.00, 30, '123456789015'),
+('Butter 100g', 3, 35.00, 40, '123456789016'),
+('Coca Cola 500ml', 4, 20.00, 60, '123456789017'),
+('Potato Chips', 5, 15.00, 25, '123456789018'),
+('Chocolate Bar', 5, 10.00, 35, '123456789019'),
+('Eggs (6 pcs)', 3, 30.00, 20, '123456789020'),
+('Cooking Oil 1L', 1, 120.00, 15, '123456789021');
+
+-- Insert employees
+INSERT INTO employees (employee_name, email, phone, role, salary) VALUES 
+('John Doe', 'john@supermarket.com', '9876543210', 'Cashier', 25000),
+('Jane Smith', 'jane@supermarket.com', '9876543211', 'Manager', 50000);
+
+-- Insert customers
+INSERT INTO customers (customer_name, email, phone, address) VALUES 
+('Regular Customer', 'customer@email.com', '9876543212', '123 Main Street'),
+('Premium Customer', 'premium@email.com', '9876543213', '456 Oak Avenue');
+-- Product catalog view
+CREATE VIEW product_catalog AS
+SELECT 
+    p.product_id,
+    p.product_name,
+    c.category_name,
+    p.price,
+    p.stock_quantity,
+    p.barcode,
+    p.description,
+    CASE 
+        WHEN p.stock_quantity <= 0 THEN 'Out of Stock'
+        WHEN p.stock_quantity < 10 THEN 'Low Stock'
+        ELSE 'In Stock'
+    END as stock_status
+FROM products p
+LEFT JOIN categories c ON p.category_id = c.category_id
+WHERE p.is_active = TRUE;
+
+-- Sales summary view
+CREATE VIEW sales_summary AS
+SELECT 
+    b.bill_id,
+    b.bill_number,
+    b.bill_date,
+    c.customer_name,
+    e.employee_name,
+    b.total_amount,
+    b.discount,
+    b.tax_amount,
+    b.final_amount,
+    b.payment_method,
+    COUNT(bi.bill_item_id) as total_items
+FROM bills b
+LEFT JOIN customers c ON b.customer_id = c.customer_id
+JOIN employees e ON b.employee_id = e.employee_id
+LEFT JOIN bill_items bi ON b.bill_id = bi.bill_id
+GROUP BY b.bill_id;
+
+-- Low stock alert view
+CREATE VIEW low_stock_alert AS
+SELECT 
+    product_id,
+    product_name,
+    stock_quantity,
+    'Low Stock' as alert_type
+FROM products 
+WHERE stock_quantity < 10 AND stock_quantity > 0
+UNION
+SELECT 
+    product_id,
+    product_name,
+    stock_quantity,
+    'Out of Stock' as alert_type
+FROM products 
+WHERE stock_quantity <= 0;
+-- Trigger to update stock after bill item insertion
+DELIMITER $$
+CREATE TRIGGER after_bill_item_insert
+AFTER INSERT ON bill_items
+FOR EACH ROW
+BEGIN
+    -- Update product stock
+    UPDATE products 
+    SET stock_quantity = stock_quantity - NEW.quantity
+    WHERE product_id = NEW.product_id;
+    
+    -- Record inventory transaction
+    INSERT INTO inventory_transactions 
+    (product_id, transaction_type, quantity, reference_type, reference_id)
+    VALUES (NEW.product_id, 'OUT', NEW.quantity, 'SALE', NEW.bill_id);
+END$$
+DELIMITER ;
+
+-- Trigger to update bill totals
+DELIMITER $$
+CREATE TRIGGER after_bill_item_insert_total
+AFTER INSERT ON bill_items
+FOR EACH ROW
+BEGIN
+    DECLARE bill_total DECIMAL(10,2);
+    DECLARE bill_tax DECIMAL(10,2);
+    
+    SELECT SUM(total_price) INTO bill_total
+    FROM bill_items 
+    WHERE bill_id = NEW.bill_id;
+    
+    SET bill_tax = bill_total * 0.05; -- 5% tax
+    
+    UPDATE bills 
+    SET total_amount = bill_total,
+        tax_amount = bill_tax,
+        final_amount = bill_total + bill_tax - discount
+    WHERE bill_id = NEW.bill_id;
+END$$
+DELIMITER ;
+
