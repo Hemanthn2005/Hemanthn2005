@@ -1,12 +1,46 @@
-- 👋 Hi, I’m @Hemanthn2005
-- 👀 I’m interested in ...
-- 🌱 I’m currently learning ...
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
+# 🎤 Complete Voice Assistant (Python 3.13 Compatible)
 
-<!---
-Hemanthn2005/Hemanthn2005 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+A feature-rich desktop assistant with modern GUI, designed to work with Python 3.13.
+
+## ✨ Features
+
+### 🌐 **Web & Search**
+- Open any website (YouTube, Google, GitHub, etc.)
+- Google search
+- Play music on YouTube
+- Wikipedia search
+
+### 💻 **System Operations**
+- Take screenshots
+- Open apps (Notepad, Calculator, Camera)
+- File operations (create/read files)
+
+### 📝 **Productivity**
+- Take notes with auto-save
+- Set reminders
+- List notes and reminders
+- Command history
+
+### 🎭 **Entertainment**
+- Tell jokes
+- Inspirational quotes
+- Random facts
+
+### ℹ️ **Information**
+- Current time and date
+- Weather information
+- News headlines
+- Calculations
+
+### ⚙️ **Settings**
+- Change user name
+- Change assistant name
+- Dark/light theme
+- Export conversations
+
+## 🚀 Installation
+
+1. **Clone or download** the files:
+   ```bash
+   git clone <repository-url>
+   cd voice-assistant

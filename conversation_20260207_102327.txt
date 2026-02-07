@@ -1,0 +1,7 @@
+Conversation with Jarvis
+Exported: 2026-02-07 10:23:27.111965
+==================================================
+
+[10:22 AM] Assistant: Good morning User! Happy Saturday. I'm Jarvis, your personal assistant.
+[10:22 AM] User: open gmail
+[10:22 AM] Assistant: Opening gmail
