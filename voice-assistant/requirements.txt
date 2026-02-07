@@ -1,0 +1,9 @@
+# Core requirements
+pyttsx3==2.90
+wikipedia==1.4.0
+
+# For screenshots (optional - use mss instead of PyAutoGUI)
+mss==9.0.1  # Works with Python 3.13
+
+# Alternative for screenshots if mss fails
+# pyautogui==0.9.54  # May not work with Python 3.13
